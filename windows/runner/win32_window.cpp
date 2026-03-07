@@ -37,13 +37,14 @@ using Win32Message = std::function<LRESULT(HWND, UINT, WPARAM, LPARAM)>;
 int32_t GetDpiForHWND(HWND hwnd) {
   HMODULE user32_module = LoadLibraryA("User32.dll");
   if (!user32_module) {
-    return FALSE;
+    return 96;  // Default DPI
   }
   auto get_dpi_for_window =
       reinterpret_cast<UINT __stdcall (*)(HWND)>(
           GetProcAddress(user32_module, "GetDpiForWindow"));
   if (get_dpi_for_window == nullptr) {
-    return FALSE;
+    FreeLibrary(user32_module);
+    return 96;  // Default DPI
   }
   UINT dpi = get_dpi_for_window(hwnd);
   FreeLibrary(user32_module);
@@ -114,6 +115,7 @@ bool Win32Window::Create(const std::wstring& title,
     return false;
   }
 
+  window_handle_ = result;
   return OnCreate();
 }
 
@@ -233,7 +235,7 @@ void Win32Window::OnDestroy() {
 }
 
 void Win32Window::UpdateAndApplyDpiScale(double dpi_scale) {
-  scale_factor_ = dpi_scale;
+  scale_factor_ = dpi_scale / 96.0;
 }
 
 void Win32Window::UpdateTheme(HWND const window) {
