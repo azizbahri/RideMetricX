@@ -28,7 +28,7 @@ class SyncResult {
   ///
   /// A positive value means the rear sensor was already recording when the
   /// front sensor started.  A negative value means the front sensor started
-  /// first.  Matches the [SessionMetadata.syncOffsetMs] convention and can
+  /// first.  Matches the SessionMetadata.syncOffsetMs convention and can
   /// be persisted directly into session metadata for reproducibility.
   final int offsetMs;
 

@@ -147,17 +147,17 @@ void main() {
     test(
         'positive offset (front started 25 ms after rear): '
         'rear is trimmed to overlap', () {
-      // rear:  t = 0..99ms (20 samples at 5 ms apart)
-      // front: t = 0..99ms (20 samples at 5 ms apart)
-      // offsetMs = 25 → rear shifted to t = -25..74ms
-      // overlap: t = 0..74ms → front has 15 samples, rear has 15 samples
+      // rear:  t = 0..95ms (20 samples at 5 ms apart)
+      // front: t = 0..95ms (20 samples at 5 ms apart)
+      // offsetMs = 25 → rear shifted to t = -25..70ms
+      // overlap: t = 0..70ms → front has 15 samples, rear has 15 samples
       final front = _sineStream(count: 20);
       final rear = _sineStream(count: 20);
 
       final result = service.alignManual(front, rear, 25);
 
       expect(result.offsetMs, 25);
-      // Overlap is t=0..74ms → 15 samples (t=0,5,10,...,70; step 5ms)
+      // Overlap is t=0..70ms → 15 samples (t=0,5,10,...,70; step 5ms)
       expect(result.frontAligned.length, 15);
       expect(result.rearAligned.length, 15);
       // Both aligned streams share the same timestamps in the overlap

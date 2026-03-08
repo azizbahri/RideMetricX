@@ -20,7 +20,7 @@ import '../../models/sync_result.dart';
 /// ## Offset convention
 /// [SyncResult.offsetMs] > 0 means the front sensor started that many
 /// milliseconds *after* the rear sensor (rear was already recording).
-/// This matches the [SessionMetadata.syncOffsetMs] convention.
+/// This matches the SessionMetadata.syncOffsetMs convention.
 class SynchronizationService {
   /// Nominal sampling rate in Hz used to convert between sample lag and
   /// millisecond offset.  Must be positive.
@@ -38,6 +38,15 @@ class SynchronizationService {
   ///
   /// Returns a [SyncResult] with [SyncMode.manual] and the Pearson
   /// correlation of the aligned [ImuSample.accelZG] channels.
+  ///
+  /// **Note:** if [offsetMs] is not an exact multiple of the nominal sample
+  /// period (`1000 / sampleRateHz` ms), the two resulting aligned lists may
+  /// have different lengths and non-matching per-index timestamps because each
+  /// stream is clipped independently.  In that case the returned
+  /// [SyncResult.correlationCoefficient] is still computed by pairing elements
+  /// at the same index, which may not reflect true time-aligned pairs.  For
+  /// best results pass an offset that is a multiple of the sample period (e.g.
+  /// multiples of 5 ms at 200 Hz).
   SyncResult alignManual(
     List<ImuSample> front,
     List<ImuSample> rear,
@@ -103,6 +112,14 @@ class SynchronizationService {
   /// the [ImuSample.accelZG] signals within a ±[maxSearchMs] search window.
   ///
   /// Offset convention: positive value → front started *after* rear.
+  ///
+  /// **Limitation:** the search treats both streams as uniform-sample arrays
+  /// indexed by position, using [sampleRateHz] as the nominal rate to convert
+  /// between sample lags and millisecond offsets.  If either stream has
+  /// timestamp jitter or gaps the index-based cross-correlation may not
+  /// correspond exactly to the timestamp-based clipping performed by
+  /// [_applyOffsetAndClip].  This method is accurate for streams that were
+  /// recorded at a steady rate close to [sampleRateHz].
   int _findBestOffsetMs(
     List<ImuSample> front,
     List<ImuSample> rear,
@@ -131,10 +148,15 @@ class SynchronizationService {
       );
       if (len < 2) continue;
 
-      final a = frontZ.sublist(frontStart, frontStart + len);
-      final b = rearZ.sublist(rearStart, rearStart + len);
-
-      final corr = _pearsonCorrelation(a, b);
+      // Use index-range overload to avoid allocating intermediate sublists on
+      // every iteration (can be O(N*lag) allocations for long streams).
+      final corr = _pearsonCorrelationRange(
+        frontZ,
+        frontStart,
+        rearZ,
+        rearStart,
+        len,
+      );
       if (corr > bestCorr) {
         bestCorr = corr;
         bestLag = lag;
@@ -233,6 +255,47 @@ class SynchronizationService {
     for (int i = 0; i < n; i++) {
       final da = a[i] - meanA;
       final db = b[i] - meanB;
+      cov += da * db;
+      varA += da * da;
+      varB += db * db;
+    }
+
+    final denom = math.sqrt(varA * varB);
+    if (denom == 0.0) return 0.0;
+    return cov / denom;
+  }
+
+  /// Computes the Pearson correlation coefficient over index ranges within
+  /// [a] and [b], reading [len] elements starting at [aStart] and [bStart]
+  /// respectively.
+  ///
+  /// Avoids allocating intermediate sublists, making it safe to call from a
+  /// tight loop.  Returns 0.0 when [len] < 2 or when the standard deviation
+  /// of either slice is zero.
+  static double _pearsonCorrelationRange(
+    List<double> a,
+    int aStart,
+    List<double> b,
+    int bStart,
+    int len,
+  ) {
+    if (len < 2) return 0.0;
+
+    double sumA = 0.0;
+    double sumB = 0.0;
+    for (int i = 0; i < len; i++) {
+      sumA += a[aStart + i];
+      sumB += b[bStart + i];
+    }
+    final meanA = sumA / len;
+    final meanB = sumB / len;
+
+    double cov = 0.0;
+    double varA = 0.0;
+    double varB = 0.0;
+    for (int i = 0; i < len; i++) {
+      final da = a[aStart + i] - meanA;
+      final db = b[bStart + i] - meanB;
       cov += da * db;
       varA += da * da;
       varB += db * db;
