@@ -34,3 +34,39 @@ jobs:
 
       - name: Run tests
         run: flutter test
+
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.x'
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Configure Windows build
+        run: flutter config --enable-windows-desktop
+
+      - name: Build Windows (Debug)
+        run: flutter build windows --debug
+
+      - name: Verify build output exists
+        run: |
+          if (!(Test-Path "build\windows\x64\runner\Debug\ride_metric_x.exe")) {
+            Write-Error "Windows executable was not created"
+            exit 1
+          }
+        shell: pwsh
+
+      - name: Run Windows build tests
+        run: flutter test test/windows_build_test.dart
