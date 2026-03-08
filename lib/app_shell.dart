@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'screens/analysis_screen.dart';
+import 'screens/comparison_screen.dart';
 import 'screens/import_screen.dart';
 import 'screens/sessions_screen.dart';
 import 'screens/settings_screen.dart';
@@ -45,6 +46,11 @@ const List<_NavDestination> _destinations = [
     selectedIcon: Icon(Icons.tune),
   ),
   _NavDestination(
+    label: 'Compare',
+    icon: Icon(Icons.compare_arrows_outlined),
+    selectedIcon: Icon(Icons.compare_arrows),
+  ),
+  _NavDestination(
     label: 'Settings',
     icon: Icon(Icons.settings_outlined),
     selectedIcon: Icon(Icons.settings),
@@ -72,6 +78,7 @@ class _AppShellState extends State<AppShell> {
     SessionsScreen(),
     AnalysisScreen(),
     TuningScreen(),
+    ComparisonScreen(),
     SettingsScreen(),
   ];
 
