@@ -4,8 +4,8 @@
 /// Low-Speed Compression (LSC), High-Speed Compression (HSC),
 /// Low-Speed Rebound (LSR), and High-Speed Rebound (HSR).
 ///
-/// A value of 0 represents the full-hard (minimum damping) position;
-/// higher click counts represent softer (more open) settings.
+/// A value of 0 represents the full-hard (maximum damping) position;
+/// higher click counts represent softer (more open, less damping) settings.
 class DampingClicksConfig {
   const DampingClicksConfig({
     required this.compressionLowSpeedClicks,

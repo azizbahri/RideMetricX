@@ -277,6 +277,28 @@ class ConfigValidator {
             'match travelPoints length (${l.travelPoints.length}).',
           );
         }
+        if (l.travelPoints.length >= 2 &&
+            l.ratioPoints.length == l.travelPoints.length) {
+          for (var i = 1; i < l.travelPoints.length; i++) {
+            final previous = l.travelPoints[i - 1];
+            final current = l.travelPoints[i];
+            if (current <= previous) {
+              errors.add(
+                'rear.linkage.travelPoints must be strictly ascending; '
+                'travelPoints[$i] (= $current) must be > '
+                'travelPoints[${i - 1}] (= $previous).',
+              );
+            }
+          }
+          for (var i = 0; i < l.ratioPoints.length; i++) {
+            final ratio = l.ratioPoints[i];
+            if (ratio <= 0) {
+              errors.add(
+                'rear.linkage.ratioPoints[$i] must be > 0 (got $ratio).',
+              );
+            }
+          }
+        }
     }
   }
 }

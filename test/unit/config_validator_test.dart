@@ -489,6 +489,38 @@ void main() {
       );
     });
 
+    test('lookupTable with non-ascending travel points is rejected', () {
+      final errors = ConfigValidator.validate(
+        withLinkage(
+          LinkageConfig.lookupTable(
+            travelPoints: [0.0, 200.0, 100.0],
+            ratioPoints: [2.6, 2.8, 3.1],
+            wheelTravelMaxMm: 200.0,
+          ),
+        ),
+      );
+      expect(
+        errors.any((e) => e.contains('travelPoints') && e.contains('ascending')),
+        isTrue,
+      );
+    });
+
+    test('lookupTable with non-positive ratio point is rejected', () {
+      final errors = ConfigValidator.validate(
+        withLinkage(
+          LinkageConfig.lookupTable(
+            travelPoints: [0.0, 100.0, 200.0],
+            ratioPoints: [2.6, -1.0, 3.1],
+            wheelTravelMaxMm: 200.0,
+          ),
+        ),
+      );
+      expect(
+        errors.any((e) => e.contains('ratioPoints[1]') && e.contains('> 0')),
+        isTrue,
+      );
+    });
+
     test('valid lookupTable produces no errors', () {
       final errors = ConfigValidator.validate(
         withLinkage(
@@ -541,7 +573,7 @@ void main() {
       final errors = ConfigValidator.validate(config);
       // Expect at least: empty model, negative weight, negative rider weight,
       // negative gear weight, negative spring rate.
-      expect(errors.length, greaterThanOrEqualTo(4));
+      expect(errors.length, greaterThanOrEqualTo(5));
     });
   });
 }
