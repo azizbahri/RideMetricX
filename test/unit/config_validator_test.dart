@@ -44,12 +44,12 @@ void main() {
   // ── Motorcycle validation ─────────────────────────────────────────────────
 
   group('ConfigValidator motorcycle validation', () {
-    SuspensionConfig _withMoto(MotorcycleConfig m) =>
+    SuspensionConfig withMoto(MotorcycleConfig m) =>
         Tenere700Profile.baseline.copyWith(motorcycle: m);
 
     test('empty model name is rejected', () {
       final errors = ConfigValidator.validate(
-        _withMoto(const MotorcycleConfig(model: '', weightDryKg: 200.0)),
+        withMoto(const MotorcycleConfig(model: '', weightDryKg: 200.0)),
       );
       expect(errors, isNotEmpty);
       expect(errors.any((e) => e.contains('motorcycle.model')), isTrue);
@@ -57,29 +57,29 @@ void main() {
 
     test('whitespace-only model name is rejected', () {
       final errors = ConfigValidator.validate(
-        _withMoto(const MotorcycleConfig(model: '   ', weightDryKg: 200.0)),
+        withMoto(const MotorcycleConfig(model: '   ', weightDryKg: 200.0)),
       );
       expect(errors.any((e) => e.contains('motorcycle.model')), isTrue);
     });
 
     test('zero dry weight is rejected', () {
       final errors = ConfigValidator.validate(
-        _withMoto(const MotorcycleConfig(model: 'Bike', weightDryKg: 0.0)),
+        withMoto(const MotorcycleConfig(model: 'Bike', weightDryKg: 0.0)),
       );
       expect(errors.any((e) => e.contains('motorcycle.weightDryKg')), isTrue);
     });
 
     test('negative dry weight is rejected', () {
       final errors = ConfigValidator.validate(
-        _withMoto(const MotorcycleConfig(model: 'Bike', weightDryKg: -10.0)),
+        withMoto(const MotorcycleConfig(model: 'Bike', weightDryKg: -10.0)),
       );
       expect(errors.any((e) => e.contains('motorcycle.weightDryKg')), isTrue);
     });
 
     test('dry weight below minimum is rejected', () {
       final errors = ConfigValidator.validate(
-        _withMoto(
-          MotorcycleConfig(
+        withMoto(
+          const MotorcycleConfig(
             model: 'Bike',
             weightDryKg: MotorcycleConfig.kMinWeightDryKg - 1,
           ),
@@ -90,8 +90,8 @@ void main() {
 
     test('dry weight above maximum is rejected', () {
       final errors = ConfigValidator.validate(
-        _withMoto(
-          MotorcycleConfig(
+        withMoto(
+          const MotorcycleConfig(
             model: 'Bike',
             weightDryKg: MotorcycleConfig.kMaxWeightDryKg + 1,
           ),
@@ -104,41 +104,41 @@ void main() {
   // ── Rider validation ──────────────────────────────────────────────────────
 
   group('ConfigValidator rider validation', () {
-    SuspensionConfig _withRider(RiderConfig r) =>
+    SuspensionConfig withRider(RiderConfig r) =>
         Tenere700Profile.baseline.copyWith(rider: r);
 
     test('zero rider weight is rejected', () {
       final errors = ConfigValidator.validate(
-        _withRider(const RiderConfig(weightKg: 0.0)),
+        withRider(const RiderConfig(weightKg: 0.0)),
       );
       expect(errors.any((e) => e.contains('rider.weightKg')), isTrue);
     });
 
     test('rider weight below minimum is rejected', () {
       final errors = ConfigValidator.validate(
-        _withRider(RiderConfig(weightKg: RiderConfig.kMinWeightKg - 1)),
+        withRider(const RiderConfig(weightKg: RiderConfig.kMinWeightKg - 1)),
       );
       expect(errors.any((e) => e.contains('rider.weightKg')), isTrue);
     });
 
     test('rider weight above maximum is rejected', () {
       final errors = ConfigValidator.validate(
-        _withRider(RiderConfig(weightKg: RiderConfig.kMaxWeightKg + 1)),
+        withRider(const RiderConfig(weightKg: RiderConfig.kMaxWeightKg + 1)),
       );
       expect(errors.any((e) => e.contains('rider.weightKg')), isTrue);
     });
 
     test('negative gear weight is rejected', () {
       final errors = ConfigValidator.validate(
-        _withRider(const RiderConfig(weightKg: 80.0, gearWeightKg: -1.0)),
+        withRider(const RiderConfig(weightKg: 80.0, gearWeightKg: -1.0)),
       );
       expect(errors.any((e) => e.contains('rider.gearWeightKg')), isTrue);
     });
 
     test('gear weight above maximum is rejected', () {
       final errors = ConfigValidator.validate(
-        _withRider(
-          RiderConfig(
+        withRider(
+          const RiderConfig(
             weightKg: 80.0,
             gearWeightKg: RiderConfig.kMaxGearWeightKg + 1,
           ),
@@ -151,19 +151,19 @@ void main() {
   // ── Spring validation ─────────────────────────────────────────────────────
 
   group('ConfigValidator spring validation', () {
-    SuspensionConfig _withFrontSpring(SpringConfig s) =>
+    SuspensionConfig withFrontSpring(SpringConfig s) =>
         Tenere700Profile.baseline.copyWith(
           front: Tenere700Profile.front.copyWith(spring: s),
         );
 
-    SuspensionConfig _withRearSpring(SpringConfig s) =>
+    SuspensionConfig withRearSpring(SpringConfig s) =>
         Tenere700Profile.baseline.copyWith(
           rear: Tenere700Profile.rear.copyWith(spring: s),
         );
 
     test('front spring rate of zero is rejected', () {
       final errors = ConfigValidator.validate(
-        _withFrontSpring(
+        withFrontSpring(
           const SpringConfig(type: SpringType.linear, springRateNPerMm: 0.0),
         ),
       );
@@ -175,7 +175,7 @@ void main() {
 
     test('rear spring rate of zero is rejected', () {
       final errors = ConfigValidator.validate(
-        _withRearSpring(
+        withRearSpring(
           const SpringConfig(type: SpringType.linear, springRateNPerMm: 0.0),
         ),
       );
@@ -187,7 +187,7 @@ void main() {
 
     test('negative spring rate is rejected', () {
       final errors = ConfigValidator.validate(
-        _withFrontSpring(
+        withFrontSpring(
           const SpringConfig(type: SpringType.linear, springRateNPerMm: -9.0),
         ),
       );
@@ -199,7 +199,7 @@ void main() {
 
     test('negative preload is rejected', () {
       final errors = ConfigValidator.validate(
-        _withFrontSpring(
+        withFrontSpring(
           const SpringConfig(
             type: SpringType.linear,
             springRateNPerMm: 9.0,
@@ -215,7 +215,7 @@ void main() {
 
     test('dualRate with zero breakpoint is rejected', () {
       final errors = ConfigValidator.validate(
-        _withFrontSpring(
+        withFrontSpring(
           const SpringConfig(
             type: SpringType.dualRate,
             springRateNPerMm: 9.0,
@@ -232,7 +232,7 @@ void main() {
 
     test('dualRate with zero secondary rate is rejected', () {
       final errors = ConfigValidator.validate(
-        _withFrontSpring(
+        withFrontSpring(
           const SpringConfig(
             type: SpringType.dualRate,
             springRateNPerMm: 9.0,
@@ -251,14 +251,14 @@ void main() {
   // ── Damping clicks validation ─────────────────────────────────────────────
 
   group('ConfigValidator damping clicks validation', () {
-    SuspensionConfig _withFrontDamping(DampingClicksConfig d) =>
+    SuspensionConfig withFrontDamping(DampingClicksConfig d) =>
         Tenere700Profile.baseline.copyWith(
           front: Tenere700Profile.front.copyWith(damping: d),
         );
 
     test('negative LSC clicks are rejected', () {
       final errors = ConfigValidator.validate(
-        _withFrontDamping(
+        withFrontDamping(
           const DampingClicksConfig(
             compressionLowSpeedClicks: -1.0,
             compressionHighSpeedClicks: 10.0,
@@ -277,8 +277,8 @@ void main() {
 
     test('clicks above maximum are rejected', () {
       final errors = ConfigValidator.validate(
-        _withFrontDamping(
-          DampingClicksConfig(
+        withFrontDamping(
+          const DampingClicksConfig(
             compressionLowSpeedClicks: DampingClicksConfig.kMaxClicks + 1,
             compressionHighSpeedClicks: 10.0,
             reboundLowSpeedClicks: 10.0,
@@ -298,19 +298,19 @@ void main() {
   // ── Geometry validation ───────────────────────────────────────────────────
 
   group('ConfigValidator geometry validation', () {
-    SuspensionConfig _withFrontGeo(FrontGeometryConfig g) =>
+    SuspensionConfig withFrontGeo(FrontGeometryConfig g) =>
         Tenere700Profile.baseline.copyWith(
           front: Tenere700Profile.front.copyWith(geometry: g),
         );
 
-    SuspensionConfig _withRearGeo(RearGeometryConfig g) =>
+    SuspensionConfig withRearGeo(RearGeometryConfig g) =>
         Tenere700Profile.baseline.copyWith(
           rear: Tenere700Profile.rear.copyWith(geometry: g),
         );
 
     test('front travel <= 0 is rejected', () {
       final errors = ConfigValidator.validate(
-        _withFrontGeo(
+        withFrontGeo(
           const FrontGeometryConfig(
             wheelTravelMaxMm: 0.0,
             rakeDeg: 27.0,
@@ -327,7 +327,7 @@ void main() {
 
     test('rear travel <= 0 is rejected', () {
       final errors = ConfigValidator.validate(
-        _withRearGeo(
+        withRearGeo(
           const RearGeometryConfig(wheelTravelMaxMm: 0.0),
         ),
       );
@@ -339,7 +339,7 @@ void main() {
 
     test('negative front unsprung mass is rejected', () {
       final errors = ConfigValidator.validate(
-        _withFrontGeo(
+        withFrontGeo(
           const FrontGeometryConfig(
             wheelTravelMaxMm: 210.0,
             unsprungMassKg: -1.0,
@@ -354,7 +354,7 @@ void main() {
 
     test('negative rear unsprung mass is rejected', () {
       final errors = ConfigValidator.validate(
-        _withRearGeo(
+        withRearGeo(
           const RearGeometryConfig(
             wheelTravelMaxMm: 200.0,
             unsprungMassKg: -1.0,
@@ -369,7 +369,7 @@ void main() {
 
     test('rear lever ratio <= 0 is rejected', () {
       final errors = ConfigValidator.validate(
-        _withRearGeo(
+        withRearGeo(
           const RearGeometryConfig(
             wheelTravelMaxMm: 200.0,
             leverRatio: 0.0,
@@ -384,7 +384,7 @@ void main() {
 
     test('rake angle out of [0, 90] is rejected', () {
       final errors = ConfigValidator.validate(
-        _withFrontGeo(
+        withFrontGeo(
           const FrontGeometryConfig(
             wheelTravelMaxMm: 210.0,
             rakeDeg: 95.0,
@@ -399,7 +399,7 @@ void main() {
 
     test('negative trail is rejected', () {
       final errors = ConfigValidator.validate(
-        _withFrontGeo(
+        withFrontGeo(
           const FrontGeometryConfig(
             wheelTravelMaxMm: 210.0,
             trailMm: -5.0,
@@ -416,14 +416,14 @@ void main() {
   // ── Linkage validation ────────────────────────────────────────────────────
 
   group('ConfigValidator linkage validation', () {
-    SuspensionConfig _withLinkage(LinkageConfig l) =>
+    SuspensionConfig withLinkage(LinkageConfig l) =>
         Tenere700Profile.baseline.copyWith(
           rear: Tenere700Profile.rear.copyWith(linkage: l),
         );
 
     test('constant linkage with ratio <= 0 is rejected', () {
       final errors = ConfigValidator.validate(
-        _withLinkage(
+        withLinkage(
           LinkageConfig.constant(ratio: 0.0, wheelTravelMaxMm: 200.0),
         ),
       );
@@ -435,7 +435,7 @@ void main() {
 
     test('constant linkage with travel <= 0 is rejected', () {
       final errors = ConfigValidator.validate(
-        _withLinkage(
+        withLinkage(
           LinkageConfig.constant(ratio: 2.8, wheelTravelMaxMm: 0.0),
         ),
       );
@@ -447,7 +447,7 @@ void main() {
 
     test('progressive linkage with r0 <= 0 is rejected', () {
       final errors = ConfigValidator.validate(
-        _withLinkage(
+        withLinkage(
           const LinkageConfig.progressive(r0: 0.0, wheelTravelMaxMm: 200.0),
         ),
       );
@@ -459,7 +459,7 @@ void main() {
 
     test('lookupTable with < 2 travel points is rejected', () {
       final errors = ConfigValidator.validate(
-        _withLinkage(
+        withLinkage(
           LinkageConfig.lookupTable(
             travelPoints: [0.0],
             ratioPoints: [2.8],
@@ -475,7 +475,7 @@ void main() {
 
     test('lookupTable with mismatched point lists is rejected', () {
       final errors = ConfigValidator.validate(
-        _withLinkage(
+        withLinkage(
           LinkageConfig.lookupTable(
             travelPoints: [0.0, 100.0, 200.0],
             ratioPoints: [2.8, 3.0],
@@ -491,7 +491,7 @@ void main() {
 
     test('valid lookupTable produces no errors', () {
       final errors = ConfigValidator.validate(
-        _withLinkage(
+        withLinkage(
           LinkageConfig.lookupTable(
             travelPoints: [0.0, 100.0, 200.0],
             ratioPoints: [2.6, 2.8, 3.1],
@@ -507,35 +507,35 @@ void main() {
 
   group('ConfigValidator multiple error accumulation', () {
     test('multiple violations are all reported', () {
-      final config = SuspensionConfig(
-        motorcycle: const MotorcycleConfig(model: '', weightDryKg: -1.0),
-        rider: const RiderConfig(weightKg: -10.0, gearWeightKg: -5.0),
+      const config = SuspensionConfig(
+        motorcycle: MotorcycleConfig(model: '', weightDryKg: -1.0),
+        rider: RiderConfig(weightKg: -10.0, gearWeightKg: -5.0),
         front: FrontSuspensionConfig(
-          spring: const SpringConfig(
+          spring: SpringConfig(
             type: SpringType.linear,
             springRateNPerMm: -9.0,
           ),
-          damping: const DampingClicksConfig(
+          damping: DampingClicksConfig(
             compressionLowSpeedClicks: 10.0,
             compressionHighSpeedClicks: 10.0,
             reboundLowSpeedClicks: 10.0,
             reboundHighSpeedClicks: 10.0,
           ),
-          geometry: const FrontGeometryConfig(wheelTravelMaxMm: 210.0),
+          geometry: FrontGeometryConfig(wheelTravelMaxMm: 210.0),
         ),
         rear: RearSuspensionConfig(
-          spring: const SpringConfig(
+          spring: SpringConfig(
             type: SpringType.linear,
             springRateNPerMm: 95.0,
           ),
-          damping: const DampingClicksConfig(
+          damping: DampingClicksConfig(
             compressionLowSpeedClicks: 8.0,
             compressionHighSpeedClicks: 8.0,
             reboundLowSpeedClicks: 10.0,
             reboundHighSpeedClicks: 10.0,
           ),
           linkage: LinkageConfig.constant(ratio: 2.8, wheelTravelMaxMm: 200.0),
-          geometry: const RearGeometryConfig(wheelTravelMaxMm: 200.0),
+          geometry: RearGeometryConfig(wheelTravelMaxMm: 200.0),
         ),
       );
       final errors = ConfigValidator.validate(config);

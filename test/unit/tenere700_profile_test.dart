@@ -26,8 +26,8 @@ void main() {
     });
 
     test('repeated calls to baseline return equal configs', () {
-      final a = Tenere700Profile.baseline;
-      final b = Tenere700Profile.baseline;
+      const a = Tenere700Profile.baseline;
+      const b = Tenere700Profile.baseline;
       expect(a, equals(b));
     });
   });

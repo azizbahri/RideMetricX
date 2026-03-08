@@ -337,13 +337,13 @@ void main() {
     late RearSuspensionConfig rearConfig;
 
     setUp(() {
-      rearConfig = RearSuspensionConfig(
-        spring: const SpringConfig(
+      rearConfig = const RearSuspensionConfig(
+        spring: SpringConfig(
           type: SpringType.linear,
           springRateNPerMm: 95.0,
           preloadMm: 5.0,
         ),
-        damping: const DampingClicksConfig(
+        damping: DampingClicksConfig(
           compressionLowSpeedClicks: 8.0,
           compressionHighSpeedClicks: 8.0,
           reboundLowSpeedClicks: 10.0,
@@ -353,7 +353,7 @@ void main() {
           ratio: 2.8,
           wheelTravelMaxMm: 200.0,
         ),
-        geometry: const RearGeometryConfig(
+        geometry: RearGeometryConfig(
           wheelTravelMaxMm: 200.0,
           unsprungMassKg: 28.0,
           leverRatio: 2.8,
@@ -369,7 +369,7 @@ void main() {
     });
 
     test('copyWith overrides geometry only', () {
-      final newGeo = const RearGeometryConfig(
+      const newGeo = RearGeometryConfig(
         wheelTravelMaxMm: 220.0,
         unsprungMassKg: 30.0,
         leverRatio: 3.0,
@@ -384,13 +384,13 @@ void main() {
     });
 
     test('equality holds for identical sub-configs', () {
-      final a = RearSuspensionConfig(
-        spring: const SpringConfig(
+      const a = RearSuspensionConfig(
+        spring: SpringConfig(
           type: SpringType.linear,
           springRateNPerMm: 95.0,
           preloadMm: 5.0,
         ),
-        damping: const DampingClicksConfig(
+        damping: DampingClicksConfig(
           compressionLowSpeedClicks: 8.0,
           compressionHighSpeedClicks: 8.0,
           reboundLowSpeedClicks: 10.0,
@@ -400,7 +400,7 @@ void main() {
           ratio: 2.8,
           wheelTravelMaxMm: 200.0,
         ),
-        geometry: const RearGeometryConfig(
+        geometry: RearGeometryConfig(
           wheelTravelMaxMm: 200.0,
           unsprungMassKg: 28.0,
           leverRatio: 2.8,
@@ -426,7 +426,7 @@ void main() {
     late SuspensionConfig config;
 
     setUp(() {
-      config = SuspensionConfig(
+      config = const SuspensionConfig(
         motorcycle: _moto,
         rider: _rider,
         front: _frontConfig,
@@ -461,7 +461,7 @@ void main() {
     });
 
     test('equality holds for identical top-level configs', () {
-      final a = SuspensionConfig(
+      const a = SuspensionConfig(
         motorcycle: _moto,
         rider: _rider,
         front: _frontConfig,
