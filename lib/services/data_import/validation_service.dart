@@ -130,7 +130,7 @@ class ValidationService {
       if (gap > rules.maxTimestampGapMs) {
         gapCount++;
         warnings.add(ValidationWarning(
-          message: 'Timestamp gap of ${gap} ms between sample[${i - 1}] '
+          message: 'Timestamp gap of $gap ms between sample[${i - 1}] '
               'and sample[$i] exceeds threshold of '
               '${rules.maxTimestampGapMs} ms.',
           field: 'timestamp_ms',
@@ -269,7 +269,7 @@ class ValidationService {
           if (insertCount > 0) {
             wasCorrected = true;
             corrections.add(
-              'Interpolated $insertCount sample(s) across gap of ${gap} ms '
+              'Interpolated $insertCount sample(s) across gap of $gap ms '
               'between sample[${i - 1}] (t=${prev.timestampMs} ms) '
               'and sample[$i] (t=${curr.timestampMs} ms).',
             );

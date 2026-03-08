@@ -39,6 +39,6 @@ class ValidationReport {
   String toString() {
     final status = passed ? 'PASS' : 'FAIL';
     return 'ValidationReport($status, errors=${errors.length}, '
-        'warnings=${warnings.length}, ${metrics})';
+        'warnings=${warnings.length}, $metrics)';
   }
 }

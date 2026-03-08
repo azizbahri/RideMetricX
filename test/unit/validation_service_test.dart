@@ -148,45 +148,45 @@ void main() {
 
   group('ValidationReport', () {
     test('passed is true when errors list is empty', () {
-      final r = ValidationReport(
-        errors: const [],
-        warnings: const [],
+      const r = ValidationReport(
+        errors: [],
+        warnings: [],
         metrics: ValidationMetrics.empty,
         wasCorrected: false,
-        corrections: const [],
+        corrections: [],
       );
       expect(r.passed, isTrue);
     });
 
     test('passed is false when there are errors', () {
-      final r = ValidationReport(
-        errors: const [ValidationError(message: 'error')],
-        warnings: const [],
+      const r = ValidationReport(
+        errors: [ValidationError(message: 'error')],
+        warnings: [],
         metrics: ValidationMetrics.empty,
         wasCorrected: false,
-        corrections: const [],
+        corrections: [],
       );
       expect(r.passed, isFalse);
     });
 
     test('toString contains PASS for passing report', () {
-      final r = ValidationReport(
-        errors: const [],
-        warnings: const [],
+      const r = ValidationReport(
+        errors: [],
+        warnings: [],
         metrics: ValidationMetrics.empty,
         wasCorrected: false,
-        corrections: const [],
+        corrections: [],
       );
       expect(r.toString(), contains('PASS'));
     });
 
     test('toString contains FAIL for failing report', () {
-      final r = ValidationReport(
-        errors: const [ValidationError(message: 'bad')],
-        warnings: const [],
+      const r = ValidationReport(
+        errors: [ValidationError(message: 'bad')],
+        warnings: [],
         metrics: ValidationMetrics.empty,
         wasCorrected: false,
-        corrections: const [],
+        corrections: [],
       );
       expect(r.toString(), contains('FAIL'));
     });
@@ -802,7 +802,7 @@ void main() {
   group('Regression – NaN values', () {
     test('reports one error per NaN field per sample', () {
       final samples = [
-        ImuSample(
+        const ImuSample(
           timestampMs: 0,
           accelXG: double.nan,
           accelYG: double.nan,
