@@ -118,6 +118,56 @@ void main() {
     });
   });
 
+  // ── Pinch → zoom ───────────────────────────────────────────────────────────
+  group('CameraGestureDetector pinch zooms camera', () {
+    testWidgets('pinch-out changes distance', (tester) async {
+      final ctrl = CameraController();
+      addTearDown(ctrl.dispose);
+      await tester.pumpWidget(_detector(ctrl));
+
+      final center = tester.getCenter(find.byKey(_childKey));
+      final distBefore = ctrl.state.distance;
+
+      // Simulate a two-finger spread (pinch-out): both fingers move apart.
+      final pointer1 = await tester.startGesture(center - const Offset(20, 0));
+      final pointer2 = await tester.startGesture(center + const Offset(20, 0));
+      await tester.pump();
+      await pointer1.moveBy(const Offset(-20, 0));
+      await pointer2.moveBy(const Offset(20, 0));
+      await tester.pump(const Duration(milliseconds: 50));
+      await pointer1.up();
+      await pointer2.up();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(ctrl.state.distance, isNot(closeTo(distBefore, 1e-6)));
+    });
+
+    testWidgets('pinch does not rotate or pan', (tester) async {
+      final ctrl = CameraController();
+      addTearDown(ctrl.dispose);
+      await tester.pumpWidget(_detector(ctrl));
+
+      final center = tester.getCenter(find.byKey(_childKey));
+      final azBefore = ctrl.state.azimuthRad;
+      final panBefore = ctrl.state.panOffset;
+
+      // Spread fingers symmetrically so the focal midpoint stays fixed,
+      // verifying that the single-pointer guard suppresses rotate/pan.
+      final pointer1 = await tester.startGesture(center - const Offset(20, 0));
+      final pointer2 = await tester.startGesture(center + const Offset(20, 0));
+      await tester.pump();
+      await pointer1.moveBy(const Offset(-20, 0));
+      await pointer2.moveBy(const Offset(20, 0));
+      await tester.pump(const Duration(milliseconds: 50));
+      await pointer1.up();
+      await pointer2.up();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(ctrl.state.azimuthRad, closeTo(azBefore, 1e-6));
+      expect(ctrl.state.panOffset, panBefore);
+    });
+  });
+
   // ── Assertion guards ───────────────────────────────────────────────────────
   group('CameraGestureDetector parameter assertions', () {
     test('throws if rotateSensitivity is zero', () {

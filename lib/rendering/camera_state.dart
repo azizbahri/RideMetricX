@@ -7,7 +7,8 @@ enum CameraMode {
   /// Rotates freely around the focal point using arcball mechanics.
   arcball,
 
-  /// Orbits around a fixed look-at target; elevation is clamped above horizon.
+  /// Orbits around a fixed look-at target; elevation is clamped using the
+  /// camera's elevation bounds.
   orbit,
 
   /// Rotation is disabled; only pan and zoom are active.
@@ -38,15 +39,22 @@ class CameraState {
   /// Current camera mode.
   final CameraMode mode;
 
-  /// Horizontal rotation angle (radians). Kept in the range [0, 2π).
+  /// Horizontal rotation angle (radians).
+  ///
+  /// When modified via [copyWith], this value is normalized to the range
+  /// [0, 2π).
   final double azimuthRad;
 
   /// Vertical tilt angle (radians).
-  /// Clamped to [[minElevationRad], [maxElevationRad]].
+  ///
+  /// When modified via [copyWith], this value is clamped to the range
+  /// [[minElevationRad], [maxElevationRad]].
   final double elevationRad;
 
   /// Distance from the focal point.
-  /// Clamped to [[minDistance], [maxDistance]].
+  ///
+  /// When modified via [copyWith], this value is clamped to the range
+  /// [[minDistance], [maxDistance]].
   final double distance;
 
   /// 2-D pan offset applied after the view transform (viewport units).

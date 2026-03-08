@@ -47,6 +47,10 @@ class _CameraGestureDetectorState extends State<CameraGestureDetector> {
   // derive a frame-to-frame delta rather than applying the cumulative scale.
   double _lastScale = 1.0;
 
+  // Tracks the number of active pointers captured at scale-start so that
+  // rotate/pan is suppressed during a multi-finger pinch gesture.
+  int _pointerCount = 1;
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -62,26 +66,31 @@ class _CameraGestureDetectorState extends State<CameraGestureDetector> {
 
   void _onScaleStart(ScaleStartDetails details) {
     _lastScale = 1.0;
+    _pointerCount = details.pointerCount;
   }
 
   void _onScaleUpdate(ScaleUpdateDetails details) {
     final mode = widget.controller.mode;
 
-    // ── Rotate / pan from drag delta ─────────────────────────────────────────
-    final dx = details.focalPointDelta.dx;
-    final dy = details.focalPointDelta.dy;
+    // ── Rotate / pan from drag delta (single-pointer only) ───────────────────
+    // During a multi-finger pinch the focal-point midpoint may drift, which
+    // would cause unintended rotation/pan.  Guard to single-pointer drags only.
+    if (_pointerCount == 1) {
+      final dx = details.focalPointDelta.dx;
+      final dy = details.focalPointDelta.dy;
 
-    if (mode == CameraMode.fixed) {
-      widget.controller.pan(
-        dx * widget.panSensitivity,
-        dy * widget.panSensitivity,
-      );
-    } else {
-      // arcball / orbit: drag → rotate
-      widget.controller.rotate(
-        dx * widget.rotateSensitivity,
-        dy * widget.rotateSensitivity,
-      );
+      if (mode == CameraMode.fixed) {
+        widget.controller.pan(
+          dx * widget.panSensitivity,
+          dy * widget.panSensitivity,
+        );
+      } else {
+        // arcball / orbit: drag → rotate
+        widget.controller.rotate(
+          dx * widget.rotateSensitivity,
+          dy * widget.rotateSensitivity,
+        );
+      }
     }
 
     // ── Pinch zoom ────────────────────────────────────────────────────────────
