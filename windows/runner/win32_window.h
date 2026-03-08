@@ -31,10 +31,13 @@ class Win32Window {
   // Creates a win32 window with |title| that is positioned and sized using
   // |origin| and |size|. New windows are created on the default monitor. Window
   // sizes are specified to the OS in physical pixels, hence to ensure a
-  // consistent size this function will scale the inputted size by the DPI scale
-  // factor of the default monitor. Returns true if the window was created
-  // successfully.
+  // consistent size this function will scale the inputted width and height as
+  // as appropriate for the default monitor. The window is invisible until
+  // |Show| is called. Returns true if the window was created successfully.
   bool Create(const std::wstring& title, const Point& origin, const Size& size);
+
+  // Show the current window. Returns true if the window was successfully shown.
+  bool Show();
 
   // Release OS resources associated with window.
   void Destroy();
@@ -53,11 +56,6 @@ class Win32Window {
   RECT GetClientArea();
 
  protected:
-  // Converts a value from logical to physical coordinates, rounding the value.
-  int Scale(int source, double dpi_scale) {
-    return static_cast<int>(source * dpi_scale);
-  }
-
   // Processes and route salient window messages for mouse handling,
   // size change and DPI. Delegates handling of these to member overloads that
   // inheriting classes can handle.
@@ -73,21 +71,24 @@ class Win32Window {
   // Called when Destroy is called.
   virtual void OnDestroy();
 
-  bool Show();
-
-  void UpdateAndApplyDpiScale(double dpi_scale);
-
  private:
-  friend LRESULT CALLBACK WndProc(HWND const window, UINT const message,
+  friend class WindowClassRegistrar;
+
+  // OS callback called by message pump. Handles the WM_NCCREATE message which
+  // is passed when the non-client area is being created and enables automatic
+  // non-client DPI scaling so that the non-client area automatically
+  // responds to changes in DPI. All other messages are handled by
+  // MessageHandler.
+  static LRESULT CALLBACK WndProc(HWND const window,
+                                  UINT const message,
                                   WPARAM const wparam,
                                   LPARAM const lparam) noexcept;
-  friend static Win32Window* GetThisFromHandle(HWND const window) noexcept;
+
+  // Retrieves a class instance pointer for |window|
+  static Win32Window* GetThisFromHandle(HWND const window) noexcept;
 
   // Update the window frame's theme to match the system theme.
   static void UpdateTheme(HWND const window);
-
-  static const wchar_t* RegisterWindowClass(const std::wstring& title,
-                                            WNDPROC wnd_proc);
 
   bool quit_on_close_ = false;
 
@@ -96,9 +97,6 @@ class Win32Window {
 
   // window handle for hosted content.
   HWND child_content_ = nullptr;
-
-  // The current DPI scale factor for this window.
-  double scale_factor_ = 1.0;
 };
 
 #endif  // RUNNER_WIN32_WINDOW_H_

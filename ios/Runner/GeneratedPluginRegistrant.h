@@ -1,9 +1,8 @@
 //
-//  GeneratedPluginRegistrant.h
-//  Runner
+//  Generated file. Do not edit.
 //
-//  Created by Flutter.
-//
+
+// clang-format off
 
 #ifndef GeneratedPluginRegistrant_h
 #define GeneratedPluginRegistrant_h
