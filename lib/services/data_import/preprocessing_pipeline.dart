@@ -231,10 +231,14 @@ class _FilterStage {
     final filter = _BiquadSection.fromConfig(cfg, sampleRateHz);
     if (filter == null) return List.of(data);
 
-    // Forward pass
-    final forward = filter.reset().processAll(data);
-    // Backward pass on the reversed forward output
-    final backward = filter.reset().processAll(forward.reversed.toList());
+    // Forward pass – initialise to the DC steady-state of the first sample
+    // so that the filter does not produce a large startup transient.
+    final forward = filter.initSteadyState(data.first).processAll(data);
+    // Backward pass on the reversed forward output – initialise to the
+    // steady-state of the last forward output value.
+    final backward = filter
+        .initSteadyState(forward.last)
+        .processAll(forward.reversed.toList());
     // Reverse the result to restore original time direction
     return backward.reversed.toList();
   }
@@ -301,6 +305,25 @@ class _BiquadSection {
   /// method chaining.
   _BiquadSection reset() {
     _x1 = _x2 = _y1 = _y2 = 0.0;
+    return this;
+  }
+
+  /// Initialises the delay line to the steady-state conditions for a
+  /// constant input value [ic].
+  ///
+  /// For a low-pass filter the DC gain is 1, so the output steady-state
+  /// equals [ic].  For a high-pass filter the DC gain is 0, so the output
+  /// steady-state is 0.  Using proper initial conditions avoids the large
+  /// startup transient that occurs when filtering begins on a non-zero signal
+  /// with zero delay-line state.
+  _BiquadSection initSteadyState(double ic) {
+    // DC gain = (b0+b1+b2) / (1+a1+a2).  The denominator is always non-zero
+    // for valid biquad coefficients within the Nyquist range, but guard
+    // against a degenerate edge case just in case.
+    final denom = 1.0 + a1 + a2;
+    final dcGain = denom.abs() > 1e-12 ? (b0 + b1 + b2) / denom : 0.0;
+    _x1 = _x2 = ic;
+    _y1 = _y2 = ic * dcGain;
     return this;
   }
 
