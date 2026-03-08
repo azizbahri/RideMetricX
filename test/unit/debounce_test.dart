@@ -4,6 +4,7 @@
 
 import 'dart:async';
 
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:ride_metric_x/services/simulation/debouncer.dart';
@@ -13,13 +14,13 @@ void main() {
   // ── Debouncer ──────────────────────────────────────────────────────────────
   group('Debouncer', () {
     test('action is NOT called before delay elapses', () {
-      fakeAsync((async) {
+      fakeAsync((fake) {
         int callCount = 0;
         final debouncer = Debouncer(delay: const Duration(milliseconds: 500));
 
         debouncer.run(() => callCount++);
 
-        async.elapse(const Duration(milliseconds: 499));
+        fake.elapse(const Duration(milliseconds: 499));
         expect(callCount, 0);
 
         debouncer.dispose();
@@ -27,13 +28,13 @@ void main() {
     });
 
     test('action IS called after delay elapses', () {
-      fakeAsync((async) {
+      fakeAsync((fake) {
         int callCount = 0;
         final debouncer = Debouncer(delay: const Duration(milliseconds: 500));
 
         debouncer.run(() => callCount++);
 
-        async.elapse(const Duration(milliseconds: 500));
+        fake.elapse(const Duration(milliseconds: 500));
         expect(callCount, 1);
 
         debouncer.dispose();
@@ -41,18 +42,18 @@ void main() {
     });
 
     test('rapid calls coalesce into a single invocation', () {
-      fakeAsync((async) {
+      fakeAsync((fake) {
         int callCount = 0;
         final debouncer = Debouncer(delay: const Duration(milliseconds: 500));
 
         debouncer.run(() => callCount++);
-        async.elapse(const Duration(milliseconds: 100));
+        fake.elapse(const Duration(milliseconds: 100));
         debouncer.run(() => callCount++);
-        async.elapse(const Duration(milliseconds: 100));
+        fake.elapse(const Duration(milliseconds: 100));
         debouncer.run(() => callCount++);
 
         // 600 ms total; only the last run() schedule should fire.
-        async.elapse(const Duration(milliseconds: 500));
+        fake.elapse(const Duration(milliseconds: 500));
         expect(callCount, 1);
 
         debouncer.dispose();
@@ -60,14 +61,14 @@ void main() {
     });
 
     test('isPending is true while timer is active', () {
-      fakeAsync((async) {
+      fakeAsync((fake) {
         final debouncer = Debouncer(delay: const Duration(milliseconds: 300));
 
         expect(debouncer.isPending, isFalse);
         debouncer.run(() {});
         expect(debouncer.isPending, isTrue);
 
-        async.elapse(const Duration(milliseconds: 300));
+        fake.elapse(const Duration(milliseconds: 300));
         expect(debouncer.isPending, isFalse);
 
         debouncer.dispose();
@@ -75,14 +76,14 @@ void main() {
     });
 
     test('cancel prevents the action from being invoked', () {
-      fakeAsync((async) {
+      fakeAsync((fake) {
         int callCount = 0;
         final debouncer = Debouncer(delay: const Duration(milliseconds: 300));
 
         debouncer.run(() => callCount++);
         debouncer.cancel();
 
-        async.elapse(const Duration(milliseconds: 300));
+        fake.elapse(const Duration(milliseconds: 300));
         expect(callCount, 0);
         expect(debouncer.isPending, isFalse);
 
@@ -91,28 +92,28 @@ void main() {
     });
 
     test('dispose cancels pending action', () {
-      fakeAsync((async) {
+      fakeAsync((fake) {
         int callCount = 0;
         final debouncer = Debouncer(delay: const Duration(milliseconds: 300));
 
         debouncer.run(() => callCount++);
         debouncer.dispose();
 
-        async.elapse(const Duration(milliseconds: 300));
+        fake.elapse(const Duration(milliseconds: 300));
         expect(callCount, 0);
       });
     });
 
     test('a second run() replaces the pending action', () {
-      fakeAsync((async) {
+      fakeAsync((fake) {
         final calls = <String>[];
         final debouncer = Debouncer(delay: const Duration(milliseconds: 200));
 
         debouncer.run(() => calls.add('first'));
-        async.elapse(const Duration(milliseconds: 100));
+        fake.elapse(const Duration(milliseconds: 100));
         debouncer.run(() => calls.add('second'));
 
-        async.elapse(const Duration(milliseconds: 200));
+        fake.elapse(const Duration(milliseconds: 200));
         expect(calls, ['second']);
 
         debouncer.dispose();
@@ -131,7 +132,7 @@ void main() {
     });
 
     test('trigger() moves state to pending before delay elapses', () {
-      fakeAsync((async) {
+      fakeAsync((fake) {
         final trigger = SimulationTrigger(
           debounceDuration: const Duration(milliseconds: 300),
           onRun: () async {},
@@ -140,7 +141,7 @@ void main() {
         trigger.trigger();
         expect(trigger.state, SimulationState.pending);
 
-        async.elapse(const Duration(milliseconds: 299));
+        fake.elapse(const Duration(milliseconds: 299));
         expect(trigger.state, SimulationState.pending);
 
         trigger.dispose();
@@ -148,7 +149,7 @@ void main() {
     });
 
     test('state transitions idle → pending → running → idle', () {
-      fakeAsync((async) {
+      fakeAsync((fake) {
         final states = <SimulationState>[];
         final trigger = SimulationTrigger(
           debounceDuration: const Duration(milliseconds: 200),
@@ -157,8 +158,8 @@ void main() {
         trigger.addListener(() => states.add(trigger.state));
 
         trigger.trigger();
-        async.elapse(const Duration(milliseconds: 200));
-        async.flushMicrotasks();
+        fake.elapse(const Duration(milliseconds: 200));
+        fake.flushMicrotasks();
 
         expect(states, [
           SimulationState.pending,
@@ -171,7 +172,7 @@ void main() {
     });
 
     test('notifyListeners is called on each state change', () {
-      fakeAsync((async) {
+      fakeAsync((fake) {
         int notifyCount = 0;
         final trigger = SimulationTrigger(
           debounceDuration: const Duration(milliseconds: 100),
@@ -180,8 +181,8 @@ void main() {
         trigger.addListener(() => notifyCount++);
 
         trigger.trigger(); // idle → pending
-        async.elapse(const Duration(milliseconds: 100)); // pending → running
-        async.flushMicrotasks(); // running → idle
+        fake.elapse(const Duration(milliseconds: 100)); // pending → running
+        fake.flushMicrotasks(); // running → idle
         // 3 transitions: pending, running, idle.
         expect(notifyCount, 3);
 
@@ -190,7 +191,7 @@ void main() {
     });
 
     test('rapid trigger() calls coalesce to a single run', () {
-      fakeAsync((async) {
+      fakeAsync((fake) {
         int runCount = 0;
         final trigger = SimulationTrigger(
           debounceDuration: const Duration(milliseconds: 300),
@@ -198,13 +199,13 @@ void main() {
         );
 
         trigger.trigger();
-        async.elapse(const Duration(milliseconds: 100));
+        fake.elapse(const Duration(milliseconds: 100));
         trigger.trigger();
-        async.elapse(const Duration(milliseconds: 100));
+        fake.elapse(const Duration(milliseconds: 100));
         trigger.trigger();
 
-        async.elapse(const Duration(milliseconds: 300));
-        async.flushMicrotasks();
+        fake.elapse(const Duration(milliseconds: 300));
+        fake.flushMicrotasks();
 
         expect(runCount, 1);
         trigger.dispose();
@@ -212,7 +213,7 @@ void main() {
     });
 
     test('trigger() while running is a no-op', () {
-      fakeAsync((async) {
+      fakeAsync((fake) {
         final runCompleter = Completer<void>();
         int runCount = 0;
         final trigger = SimulationTrigger(
@@ -224,8 +225,8 @@ void main() {
         );
 
         trigger.trigger();
-        async.elapse(const Duration(milliseconds: 100));
-        async.flushMicrotasks();
+        fake.elapse(const Duration(milliseconds: 100));
+        fake.flushMicrotasks();
         expect(trigger.state, SimulationState.running);
 
         // Calling trigger() while running should be ignored.
@@ -233,7 +234,7 @@ void main() {
         expect(trigger.state, SimulationState.running);
 
         runCompleter.complete();
-        async.flushMicrotasks();
+        fake.flushMicrotasks();
 
         expect(trigger.state, SimulationState.idle);
         expect(runCount, 1);
@@ -242,15 +243,15 @@ void main() {
     });
 
     test('onRun exception still transitions state back to idle', () {
-      fakeAsync((async) {
+      fakeAsync((fake) {
         final trigger = SimulationTrigger(
           debounceDuration: const Duration(milliseconds: 100),
           onRun: () async => throw Exception('sim error'),
         );
 
         trigger.trigger();
-        async.elapse(const Duration(milliseconds: 100));
-        async.flushMicrotasks();
+        fake.elapse(const Duration(milliseconds: 100));
+        fake.flushMicrotasks();
 
         expect(trigger.state, SimulationState.idle);
         trigger.dispose();
@@ -258,7 +259,7 @@ void main() {
     });
 
     test('dispose cancels pending run', () {
-      fakeAsync((async) {
+      fakeAsync((fake) {
         int runCount = 0;
         final trigger = SimulationTrigger(
           debounceDuration: const Duration(milliseconds: 300),
@@ -268,7 +269,7 @@ void main() {
         trigger.trigger();
         trigger.dispose();
 
-        async.elapse(const Duration(milliseconds: 300));
+        fake.elapse(const Duration(milliseconds: 300));
         expect(runCount, 0);
       });
     });
