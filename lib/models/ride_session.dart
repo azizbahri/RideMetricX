@@ -74,7 +74,8 @@ class RideSession {
         'imported_at': importedAt.toIso8601String(),
         if (frontMetadata != null)
           'front_metadata': _metadataToMap(frontMetadata!),
-        if (rearMetadata != null) 'rear_metadata': _metadataToMap(rearMetadata!),
+        if (rearMetadata != null)
+          'rear_metadata': _metadataToMap(rearMetadata!),
         'front_sample_count': frontProcessed.length,
         'rear_sample_count': rearProcessed.length,
         if (frontReport != null) 'front_passed': frontReport!.passed,
@@ -86,15 +87,15 @@ class RideSession {
   static Map<String, dynamic> _metadataToMap(SessionMetadata m) => {
         'session_id': m.sessionId,
         'position': m.position.name,
-        if (m.recordedAt != null) 'recorded_at': m.recordedAt!.toIso8601String(),
+        if (m.recordedAt != null)
+          'recorded_at': m.recordedAt!.toIso8601String(),
         'sampling_rate_hz': m.samplingRateHz,
         'sync_offset_ms': m.syncOffsetMs,
         if (m.pairedSessionId != null) 'paired_session_id': m.pairedSessionId,
       };
 
   @override
-  String toString() =>
-      'RideSession(id=$sessionId, '
+  String toString() => 'RideSession(id=$sessionId, '
       'front=${frontProcessed.length} samples, '
       'rear=${rearProcessed.length} samples, '
       'score=$qualityScore)';

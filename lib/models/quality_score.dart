@@ -1,6 +1,47 @@
 import 'sync_result.dart';
 import 'validation_report.dart';
 
+// ── Scoring constants ─────────────────────────────────────────────────────────
+
+/// Number of independently scored sensor channels per [ImuSample].
+///
+/// Used to normalise [ValidationMetrics.nanCount] into a per-channel fraction.
+const int _sensorChannelCount = 7;
+
+/// Correlation threshold below which a sync penalty is applied.
+const double _minGoodCorrelation = 0.5;
+
+/// Scale factor for the poor-correlation penalty
+/// (max penalty = [_maxCorrPenalty] points when corr == 0).
+const double _poorCorrPenaltyScale = 20.0;
+
+/// Maximum sync correlation penalty in score points.
+const int _maxCorrPenalty = 10;
+
+/// Correlation threshold above which a sync bonus is applied.
+const double _excellentCorrThreshold = 0.9;
+
+/// Scale factor for the excellent-correlation bonus.
+const double _excellentCorrBonusScale = 50.0;
+
+/// Maximum sync correlation bonus in score points.
+const int _maxCorrBonus = 5;
+
+/// Maximum NaN penalty in score points.
+const int _maxNanPenalty = 30;
+
+/// Maximum gap penalty in score points.
+const int _maxGapPenalty = 20;
+
+/// Maximum outlier penalty in score points.
+const int _maxOutlierPenalty = 20;
+
+/// Score deduction per stuck sensor channel, capped at [_maxStuckPenalty].
+const int _stuckChannelPenaltyPoints = 5;
+
+/// Maximum total stuck-channel penalty in score points.
+const int _maxStuckPenalty = 20;
+
 /// Quality band classification for a [QualityScore].
 enum QualityBand {
   /// Score 90–100: all signals clean, sync well-aligned.
@@ -71,13 +112,18 @@ class QualityScore {
     int score = total ~/ reports.length;
 
     // Sync quality adjustment: correlationCoefficient ∈ [-1, 1].
-    // < 0.5 → deduct up to 10 points; ≥ 0.9 → add up to 5 bonus points.
+    // < _minGoodCorrelation → deduct up to _maxCorrPenalty points;
+    // ≥ _excellentCorrThreshold → add up to _maxCorrBonus bonus points.
     if (syncResult != null) {
       final corr = syncResult.correlationCoefficient;
-      if (corr < 0.5) {
-        score -= ((0.5 - corr) * 20).round().clamp(0, 10);
-      } else if (corr >= 0.9) {
-        score += ((corr - 0.9) * 50).round().clamp(0, 5);
+      if (corr < _minGoodCorrelation) {
+        score -= ((_minGoodCorrelation - corr) * _poorCorrPenaltyScale)
+            .round()
+            .clamp(0, _maxCorrPenalty);
+      } else if (corr >= _excellentCorrThreshold) {
+        score += ((corr - _excellentCorrThreshold) * _excellentCorrBonusScale)
+            .round()
+            .clamp(0, _maxCorrBonus);
       }
     }
 
@@ -99,20 +145,26 @@ class QualityScore {
     final n = m.sampleCount;
 
     // NaN penalty: nanCount counts individual channel NaNs; each sample has
-    // 7 sensor channels.  Max penalty: 30 points.
-    final nanFraction = (m.nanCount / (n * 7.0)).clamp(0.0, 1.0);
-    score -= (nanFraction * 300).round().clamp(0, 30);
+    // _sensorChannelCount channels.  Max penalty: _maxNanPenalty points.
+    final nanFraction =
+        (m.nanCount / (n * _sensorChannelCount.toDouble())).clamp(0.0, 1.0);
+    score -=
+        (nanFraction * _maxNanPenalty * 10).round().clamp(0, _maxNanPenalty);
 
-    // Gap penalty: up to 20 points.
+    // Gap penalty: up to _maxGapPenalty points.
     final gapFraction = (m.gapCount / n).clamp(0.0, 1.0);
-    score -= (gapFraction * 100).round().clamp(0, 20);
+    score -=
+        (gapFraction * _maxGapPenalty * 5).round().clamp(0, _maxGapPenalty);
 
-    // Outlier penalty: up to 20 points.
+    // Outlier penalty: up to _maxOutlierPenalty points.
     final outlierFraction = (m.outlierCount / n).clamp(0.0, 1.0);
-    score -= (outlierFraction * 100).round().clamp(0, 20);
+    score -= (outlierFraction * _maxOutlierPenalty * 5)
+        .round()
+        .clamp(0, _maxOutlierPenalty);
 
-    // Stuck-field penalty: 5 points per stuck channel, max 20 points.
-    score -= (m.stuckFieldCount * 5).clamp(0, 20);
+    // Stuck-field penalty: _stuckChannelPenaltyPoints per channel, max _maxStuckPenalty.
+    score -= (m.stuckFieldCount * _stuckChannelPenaltyPoints)
+        .clamp(0, _maxStuckPenalty);
 
     return score.clamp(0, 100);
   }
