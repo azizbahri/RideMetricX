@@ -46,7 +46,7 @@ void main() {
   // ── Bottoming ───────────────────────────────────────────────────────────────
   group('Bottoming too much', () {
     test('generates LOW severity for 1–4 events', () {
-      final metrics = const AnalysisMetrics(rearBottomingEvents: 3);
+      const metrics = AnalysisMetrics(rearBottomingEvents: 3);
       final recs = _engine.generate(metrics, _current);
       final bottoming =
           recs.where((r) => r.type == RecommendationType.bottomingTooMuch);
@@ -55,7 +55,7 @@ void main() {
     });
 
     test('generates MEDIUM severity for 5–10 events', () {
-      final metrics = const AnalysisMetrics(rearBottomingEvents: 7);
+      const metrics = AnalysisMetrics(rearBottomingEvents: 7);
       final recs = _engine.generate(metrics, _current);
       final rec =
           recs.firstWhere((r) => r.type == RecommendationType.bottomingTooMuch);
@@ -63,7 +63,7 @@ void main() {
     });
 
     test('generates HIGH severity for >10 events', () {
-      final metrics = const AnalysisMetrics(rearBottomingEvents: 12);
+      const metrics = AnalysisMetrics(rearBottomingEvents: 12);
       final recs = _engine.generate(metrics, _current);
       final rec =
           recs.firstWhere((r) => r.type == RecommendationType.bottomingTooMuch);
@@ -72,7 +72,7 @@ void main() {
 
     test('suggests increased compression on the end that bottomed more (rear)',
         () {
-      final metrics = const AnalysisMetrics(
+      const metrics = AnalysisMetrics(
         frontBottomingEvents: 2,
         rearBottomingEvents: 8,
       );
@@ -93,7 +93,7 @@ void main() {
     });
 
     test('suggests increased compression on front when it bottomed more', () {
-      final metrics = const AnalysisMetrics(
+      const metrics = AnalysisMetrics(
         frontBottomingEvents: 9,
         rearBottomingEvents: 1,
       );
@@ -123,7 +123,7 @@ void main() {
   // ── Travel underutilisation ─────────────────────────────────────────────────
   group('Travel underutilisation', () {
     test('triggers when travel < 70%', () {
-      final metrics = const AnalysisMetrics(
+      const metrics = AnalysisMetrics(
         frontTravelUsagePercent: 60.0,
         rearTravelUsagePercent: 65.0,
       );
@@ -135,7 +135,7 @@ void main() {
     });
 
     test('does not trigger when both ends use ≥ 70% travel', () {
-      final metrics = const AnalysisMetrics(
+      const metrics = AnalysisMetrics(
         frontTravelUsagePercent: 75.0,
         rearTravelUsagePercent: 70.0,
       );
@@ -147,7 +147,7 @@ void main() {
     });
 
     test('suggests reduced compression on both ends', () {
-      final metrics = const AnalysisMetrics(
+      const metrics = AnalysisMetrics(
         frontTravelUsagePercent: 55.0,
         rearTravelUsagePercent: 60.0,
       );
@@ -166,7 +166,7 @@ void main() {
     });
 
     test('severity is MEDIUM', () {
-      final metrics = const AnalysisMetrics(frontTravelUsagePercent: 50.0);
+      const metrics = AnalysisMetrics(frontTravelUsagePercent: 50.0);
       final recs = _engine.generate(metrics, _current);
       final rec = recs
           .firstWhere((r) => r.type == RecommendationType.notUsingFullTravel);
@@ -177,7 +177,7 @@ void main() {
   // ── Harsh ride ──────────────────────────────────────────────────────────────
   group('Harsh ride', () {
     test('triggers when harshRideDetected is true', () {
-      final metrics = const AnalysisMetrics(harshRideDetected: true);
+      const metrics = AnalysisMetrics(harshRideDetected: true);
       final recs = _engine.generate(metrics, _current);
       expect(recs.any((r) => r.type == RecommendationType.harshRide), isTrue);
     });
@@ -188,7 +188,7 @@ void main() {
     });
 
     test('suggests reduced compression on both ends', () {
-      final metrics = const AnalysisMetrics(harshRideDetected: true);
+      const metrics = AnalysisMetrics(harshRideDetected: true);
       final recs = _engine.generate(metrics, _current);
       final rec =
           recs.firstWhere((r) => r.type == RecommendationType.harshRide);
@@ -206,7 +206,7 @@ void main() {
   // ── Too much rebound ─────────────────────────────────────────────────────────
   group('Too much rebound', () {
     test('triggers when tooMuchReboundDetected is true', () {
-      final metrics = const AnalysisMetrics(tooMuchReboundDetected: true);
+      const metrics = AnalysisMetrics(tooMuchReboundDetected: true);
       final recs = _engine.generate(metrics, _current);
       expect(
         recs.any((r) => r.type == RecommendationType.tooMuchRebound),
@@ -223,7 +223,7 @@ void main() {
     });
 
     test('suggests increased rebound clicks on both ends', () {
-      final metrics = const AnalysisMetrics(tooMuchReboundDetected: true);
+      const metrics = AnalysisMetrics(tooMuchReboundDetected: true);
       final recs = _engine.generate(metrics, _current);
       final rec =
           recs.firstWhere((r) => r.type == RecommendationType.tooMuchRebound);
@@ -241,7 +241,7 @@ void main() {
   // ── Front/rear imbalance ─────────────────────────────────────────────────────
   group('Front/rear imbalance', () {
     test('triggers when difference is ≥ 20%', () {
-      final metrics = const AnalysisMetrics(
+      const metrics = AnalysisMetrics(
         frontTravelUsagePercent: 90.0,
         rearTravelUsagePercent: 60.0,
       );
@@ -253,7 +253,7 @@ void main() {
     });
 
     test('does not trigger when difference is < 20%', () {
-      final metrics = const AnalysisMetrics(
+      const metrics = AnalysisMetrics(
         frontTravelUsagePercent: 80.0,
         rearTravelUsagePercent: 65.0,
       );
@@ -266,7 +266,7 @@ void main() {
 
     test('reduces compression on the lighter end (rear) when front is heavier',
         () {
-      final metrics = const AnalysisMetrics(
+      const metrics = AnalysisMetrics(
         frontTravelUsagePercent: 90.0,
         rearTravelUsagePercent: 60.0,
       );
@@ -288,7 +288,7 @@ void main() {
     });
 
     test('reduces front compression when rear is heavier', () {
-      final metrics = const AnalysisMetrics(
+      const metrics = AnalysisMetrics(
         frontTravelUsagePercent: 60.0,
         rearTravelUsagePercent: 90.0,
       );
@@ -312,7 +312,7 @@ void main() {
   group('Severity prioritisation', () {
     test('output is sorted high → medium → low', () {
       // Bottoming >10 = HIGH; travel underuse = MEDIUM; harsh ride = MEDIUM
-      final metrics = const AnalysisMetrics(
+      const metrics = AnalysisMetrics(
         rearBottomingEvents: 12, // HIGH
         frontTravelUsagePercent: 50.0, // MEDIUM
         harshRideDetected: true, // MEDIUM
@@ -357,7 +357,7 @@ void main() {
           preload: 5.0,
         ),
       );
-      final metrics = const AnalysisMetrics(rearBottomingEvents: 5);
+      const metrics = AnalysisMetrics(rearBottomingEvents: 5);
       final recs = _engine.generate(metrics, nearMax);
       final rec =
           recs.firstWhere((r) => r.type == RecommendationType.bottomingTooMuch);
@@ -385,7 +385,7 @@ void main() {
           preload: 5.0,
         ),
       );
-      final metrics = const AnalysisMetrics(harshRideDetected: true);
+      const metrics = AnalysisMetrics(harshRideDetected: true);
       final recs = _engine.generate(metrics, nearMin);
       final rec =
           recs.firstWhere((r) => r.type == RecommendationType.harshRide);

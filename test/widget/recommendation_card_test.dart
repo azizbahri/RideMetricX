@@ -291,12 +291,12 @@ void main() {
   // ── AnalysisScreen integration ────────────────────────────────────────────────
 
   group('AnalysisScreen with recommendations', () {
-    final singleTab = ChartTab(
+    const singleTab = ChartTab(
       title: 'Accel',
       xLabel: 'ms',
       yLabel: 'g',
       series: [
-        const TelemetrySeries(
+        TelemetrySeries(
           label: 'Front Z',
           color: Colors.blue,
           points: [Offset(0, 1), Offset(1, 2)],
