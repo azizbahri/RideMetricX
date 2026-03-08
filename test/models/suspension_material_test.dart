@@ -51,11 +51,13 @@ void main() {
     const mat = SuspensionMaterial.strainSensor;
 
     test('returns green at 0 % compression', () {
-      expect(mat.getStrainColor(0.0), equals(Colors.green));
+      // Color.lerp returns a plain Color; compare via .value to avoid
+      // MaterialColor vs Color type mismatch.
+      expect(mat.getStrainColor(0.0).value, equals(Colors.green.value));
     });
 
     test('returns red at 100 % compression', () {
-      expect(mat.getStrainColor(1.0), equals(Colors.red));
+      expect(mat.getStrainColor(1.0).value, equals(Colors.red.value));
     });
 
     test('returns a colour between green and red at 50 %', () {
@@ -66,11 +68,11 @@ void main() {
     });
 
     test('clamps value below 0 to green', () {
-      expect(mat.getStrainColor(-0.5), equals(Colors.green));
+      expect(mat.getStrainColor(-0.5).value, equals(Colors.green.value));
     });
 
     test('clamps value above 1 to red', () {
-      expect(mat.getStrainColor(2.0), equals(Colors.red));
+      expect(mat.getStrainColor(2.0).value, equals(Colors.red.value));
     });
   });
 
