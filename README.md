@@ -1,5 +1,7 @@
 # RideMetricX
 
+[![Flutter CI](https://github.com/azizbahri/RideMetricX/actions/workflows/flutter.yml/badge.svg)](https://github.com/azizbahri/RideMetricX/actions/workflows/flutter.yml)
+
 Cross-platform (X) motorcycle suspension tuning simulator built with Flutter,
 targeting Windows, Android, and iOS.
 
