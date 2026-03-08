@@ -559,7 +559,7 @@ List<Offset> _lttb(List<Offset> points, int maxPoints) {
   if (maxPoints == 1) return [points.first];
   if (maxPoints == 2) return [points.first, points.last];
 
-  final result = <Offset>[]..add(points.first);
+  final result = [points.first];
 
   // Number of buckets for the interior points (first and last are fixed).
   final bucketCount = maxPoints - 2;

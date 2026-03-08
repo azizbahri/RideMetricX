@@ -15,7 +15,6 @@
 //  • DownsampleMethod.minMax can be selected explicitly
 
 import 'dart:math' as math;
-import 'dart:ui' show Offset;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -308,15 +307,15 @@ void main() {
     testWidgets('viewport is computed across all series', (tester) async {
       // Series A has y ∈ [0, 1], series B has y ∈ [10, 20].
       // The combined viewport yMin should be less than 0.5 and yMax > 15.
-      final seriesA = TelemetrySeries(
+      final seriesA = const TelemetrySeries(
         label: 'A',
         color: Colors.blue,
-        points: [const Offset(0, 0), const Offset(1, 1)],
+        points: [Offset(0, 0), Offset(1, 1)],
       );
-      final seriesB = TelemetrySeries(
+      final seriesB = const TelemetrySeries(
         label: 'B',
         color: Colors.red,
-        points: [const Offset(0, 10), const Offset(1, 20)],
+        points: [Offset(0, 10), Offset(1, 20)],
       );
 
       await tester.pumpWidget(_wrap(

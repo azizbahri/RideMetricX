@@ -14,7 +14,6 @@
 //    – LTTB preserves a signal peak better than uniform decimation
 
 import 'dart:math' as math;
-import 'dart:ui' show Offset;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ride_metric_x/widgets/telemetry_chart.dart';
@@ -191,7 +190,7 @@ void main() {
     // Signal-shape preservation: LTTB must retain an extreme peak value.
     test('retains the global maximum on a spike series', () {
       // Build a mostly flat series with one very tall spike in the centre.
-      final n = 2000;
+      const n = 2000;
       final pts = List.generate(n, (i) {
         final y = (i == n ~/ 2) ? 100.0 : 0.0;
         return Offset(i.toDouble(), y);
@@ -203,7 +202,7 @@ void main() {
     });
 
     test('retains the global minimum on a spike series', () {
-      final n = 2000;
+      const n = 2000;
       final pts = List.generate(n, (i) {
         final y = (i == n ~/ 2) ? -100.0 : 0.0;
         return Offset(i.toDouble(), y);
