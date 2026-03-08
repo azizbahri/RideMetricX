@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/session_metadata.dart';
+import '../models/validation_report.dart';
 import '../services/data_import/import_service.dart';
 
 /// Callback for picking a file; returns [FileSelection] on success,

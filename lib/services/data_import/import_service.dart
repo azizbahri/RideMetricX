@@ -27,16 +27,18 @@ class FileSelection {
 }
 
 /// Represents a step in the import pipeline emitted by [ImportService].
-sealed class ImportState {}
+sealed class ImportState {
+  const ImportState();
+}
 
 /// Import has not yet started.
 class ImportIdle extends ImportState {
-  ImportIdle();
+  const ImportIdle();
 }
 
 /// Import is running; [progress] ∈ [0.0, 1.0] indicates completion.
 class ImportInProgress extends ImportState {
-  ImportInProgress(this.progress);
+  const ImportInProgress(this.progress);
 
   /// Completion fraction in [0.0, 1.0].
   final double progress;
@@ -66,7 +68,7 @@ class ImportSuccess extends ImportState {
 
 /// Import failed; [message] describes the problem.
 class ImportError extends ImportState {
-  ImportError(this.message);
+  const ImportError(this.message);
 
   /// Human-readable description of what went wrong.
   final String message;
@@ -94,12 +96,12 @@ class ImportService {
     FileSelection selection,
     SensorPosition position,
   ) async* {
-    yield ImportInProgress(0.0);
+    yield const ImportInProgress(0.0);
 
     try {
       // ── 1. Format detection (0 → 20 %) ──────────────────────────────────
       final format = DataFormatDetector.detect(selection.fileName);
-      yield ImportInProgress(0.2);
+      yield const ImportInProgress(0.2);
 
       // ── 2. Parse (20 → 50 %) ────────────────────────────────────────────
       final DataParser parser;
@@ -114,7 +116,7 @@ class ImportService {
           parser = const BinaryParser();
       }
       final records = parser.parse(selection.content);
-      yield ImportInProgress(0.5);
+      yield const ImportInProgress(0.5);
 
       // ── 3. Record → ImuSample (50 → 70 %) ───────────────────────────────
       if (records.isEmpty) {
@@ -124,11 +126,11 @@ class ImportService {
         return;
       }
       final samples = _mapRecords(records);
-      yield ImportInProgress(0.7);
+      yield const ImportInProgress(0.7);
 
       // ── 4. Validate (70 → 100 %) ────────────────────────────────────────
       final report = validator.validate(samples);
-      yield ImportInProgress(1.0);
+      yield const ImportInProgress(1.0);
 
       yield ImportSuccess(
         report: report,

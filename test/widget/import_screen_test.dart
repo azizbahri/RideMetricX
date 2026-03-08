@@ -244,7 +244,7 @@ void main() {
       await tester.pump();
 
       // Emit a progress event.
-      ctrl.add(ImportInProgress(0.5));
+      ctrl.add(const ImportInProgress(0.5));
       await tester.pump();
 
       expect(find.byType(LinearProgressIndicator), findsOneWidget);
@@ -369,7 +369,7 @@ void main() {
       await tester.pump();
 
       // Emit error then close.
-      ctrl.add(ImportError('File is corrupt'));
+      ctrl.add(const ImportError('File is corrupt'));
       await ctrl.close();
       await tester.pumpAndSettle();
 
@@ -404,7 +404,7 @@ void main() {
       await tester.tap(find.byKey(const Key('import_button')));
       await tester.pump();
 
-      ctrl.add(ImportInProgress(0.3));
+      ctrl.add(const ImportInProgress(0.3));
       await tester.pump();
 
       // Cancel.

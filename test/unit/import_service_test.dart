@@ -103,15 +103,13 @@ void main() {
 
   group('ImportService – valid CSV import', () {
     test('emits at least one ImportInProgress event', () async {
-      final sel =
-          const FileSelection(fileName: 'front.csv', content: _validCsv);
+      const sel = FileSelection(fileName: 'front.csv', content: _validCsv);
       final events = await _collect(_svc, sel, SensorPosition.front);
       expect(events.whereType<ImportInProgress>(), isNotEmpty);
     });
 
     test('progress values are in non-decreasing order', () async {
-      final sel =
-          const FileSelection(fileName: 'front.csv', content: _validCsv);
+      const sel = FileSelection(fileName: 'front.csv', content: _validCsv);
       final events = await _collect(_svc, sel, SensorPosition.front);
       final progresses =
           events.whereType<ImportInProgress>().map((e) => e.progress).toList();
@@ -121,23 +119,20 @@ void main() {
     });
 
     test('first event has progress 0.0', () async {
-      final sel =
-          const FileSelection(fileName: 'front.csv', content: _validCsv);
+      const sel = FileSelection(fileName: 'front.csv', content: _validCsv);
       final events = await _collect(_svc, sel, SensorPosition.front);
       expect(events.first, isA<ImportInProgress>());
       expect((events.first as ImportInProgress).progress, 0.0);
     });
 
     test('terminal event is ImportSuccess', () async {
-      final sel =
-          const FileSelection(fileName: 'front.csv', content: _validCsv);
+      const sel = FileSelection(fileName: 'front.csv', content: _validCsv);
       final events = await _collect(_svc, sel, SensorPosition.front);
       expect(events.last, isA<ImportSuccess>());
     });
 
     test('ImportSuccess carries correct position and fileName', () async {
-      final sel =
-          const FileSelection(fileName: 'session.csv', content: _validCsv);
+      const sel = FileSelection(fileName: 'session.csv', content: _validCsv);
       final events = await _collect(_svc, sel, SensorPosition.rear);
       final success = events.last as ImportSuccess;
       expect(success.position, SensorPosition.rear);
@@ -145,8 +140,7 @@ void main() {
     });
 
     test('ImportSuccess contains parsed samples', () async {
-      final sel =
-          const FileSelection(fileName: 'front.csv', content: _validCsv);
+      const sel = FileSelection(fileName: 'front.csv', content: _validCsv);
       final events = await _collect(_svc, sel, SensorPosition.front);
       final success = events.last as ImportSuccess;
       expect(success.samples, hasLength(2));
@@ -155,16 +149,14 @@ void main() {
     });
 
     test('ImportSuccess validation report passed for clean data', () async {
-      final sel =
-          const FileSelection(fileName: 'front.csv', content: _validCsv);
+      const sel = FileSelection(fileName: 'front.csv', content: _validCsv);
       final events = await _collect(_svc, sel, SensorPosition.front);
       final success = events.last as ImportSuccess;
       expect(success.report.passed, isTrue);
     });
 
     test('milestone progress 0.2 emitted after format detection', () async {
-      final sel =
-          const FileSelection(fileName: 'front.csv', content: _validCsv);
+      const sel = FileSelection(fileName: 'front.csv', content: _validCsv);
       final events = await _collect(_svc, sel, SensorPosition.front);
       final progresses =
           events.whereType<ImportInProgress>().map((e) => e.progress).toSet();
@@ -172,8 +164,7 @@ void main() {
     });
 
     test('milestone progress 1.0 emitted before terminal event', () async {
-      final sel =
-          const FileSelection(fileName: 'front.csv', content: _validCsv);
+      const sel = FileSelection(fileName: 'front.csv', content: _validCsv);
       final events = await _collect(_svc, sel, SensorPosition.front);
       final progresses =
           events.whereType<ImportInProgress>().map((e) => e.progress).toList();
@@ -185,8 +176,7 @@ void main() {
 
   group('ImportService – valid JSON import', () {
     test('succeeds and returns 2 samples', () async {
-      final sel =
-          const FileSelection(fileName: 'data.json', content: _validJson);
+      const sel = FileSelection(fileName: 'data.json', content: _validJson);
       final events = await _collect(_svc, sel, SensorPosition.front);
       expect(events.last, isA<ImportSuccess>());
       expect((events.last as ImportSuccess).samples, hasLength(2));
@@ -197,8 +187,7 @@ void main() {
 
   group('ImportService – valid JSONL import', () {
     test('succeeds and returns 2 samples', () async {
-      final sel =
-          const FileSelection(fileName: 'data.jsonl', content: _validJsonl);
+      const sel = FileSelection(fileName: 'data.jsonl', content: _validJsonl);
       final events = await _collect(_svc, sel, SensorPosition.rear);
       expect(events.last, isA<ImportSuccess>());
       expect((events.last as ImportSuccess).samples, hasLength(2));
@@ -209,19 +198,19 @@ void main() {
 
   group('ImportService – error paths', () {
     test('unknown extension emits ImportError', () async {
-      final sel = const FileSelection(fileName: 'data.xyz', content: 'stuff');
+      const sel = FileSelection(fileName: 'data.xyz', content: 'stuff');
       final events = await _collect(_svc, sel, SensorPosition.front);
       expect(events.last, isA<ImportError>());
     });
 
     test('empty CSV content emits ImportError', () async {
-      final sel = const FileSelection(fileName: 'empty.csv', content: '');
+      const sel = FileSelection(fileName: 'empty.csv', content: '');
       final events = await _collect(_svc, sel, SensorPosition.front);
       expect(events.last, isA<ImportError>());
     });
 
     test('CSV with only comments emits ImportError', () async {
-      final sel = const FileSelection(
+      const sel = FileSelection(
         fileName: 'comments.csv',
         content: '# just a comment\n# another comment\n',
       );
@@ -231,20 +220,20 @@ void main() {
 
     test('malformed CSV (column mismatch) emits ImportError', () async {
       const bad = 'timestamp_ms,accel_x_g\n0,0.02,extra_col\n';
-      final sel = const FileSelection(fileName: 'bad.csv', content: bad);
+      const sel = FileSelection(fileName: 'bad.csv', content: bad);
       final events = await _collect(_svc, sel, SensorPosition.front);
       expect(events.last, isA<ImportError>());
     });
 
     test('ImportError message is non-empty', () async {
-      final sel = const FileSelection(fileName: 'empty.csv', content: '');
+      const sel = FileSelection(fileName: 'empty.csv', content: '');
       final events = await _collect(_svc, sel, SensorPosition.front);
       final error = events.last as ImportError;
       expect(error.message, isNotEmpty);
     });
 
     test('invalid JSON emits ImportError', () async {
-      final sel = const FileSelection(
+      const sel = FileSelection(
         fileName: 'data.json',
         content: 'not-json',
       );
@@ -255,7 +244,7 @@ void main() {
     test('CSV missing required field emits ImportError', () async {
       // Has only 2 columns instead of 9.
       const bad = 'timestamp_ms,accel_x_g\n0,0.02\n5,0.03\n';
-      final sel = const FileSelection(fileName: 'short.csv', content: bad);
+      const sel = FileSelection(fileName: 'short.csv', content: bad);
       final events = await _collect(_svc, sel, SensorPosition.front);
       expect(events.last, isA<ImportError>());
     });
@@ -269,8 +258,7 @@ void main() {
       // (no-records path in the service).
       const headerOnly = 'timestamp_ms,accel_x_g,accel_y_g,accel_z_g,'
           'gyro_x_dps,gyro_y_dps,gyro_z_dps,temp_c,sample_count\n';
-      final sel =
-          const FileSelection(fileName: 'nodata.csv', content: headerOnly);
+      const sel = FileSelection(fileName: 'nodata.csv', content: headerOnly);
       final events = await _collect(_svc, sel, SensorPosition.front);
       expect(events.last, isA<ImportError>());
     });
@@ -282,7 +270,7 @@ void main() {
           'gyro_x_dps,gyro_y_dps,gyro_z_dps,temp_c,sample_count\n'
           '10,0.0,0.0,1.0,0.0,0.0,0.0,25.0,0\n'
           '5,0.0,0.0,1.0,0.0,0.0,0.0,25.0,1\n';
-      final sel = const FileSelection(fileName: 'bad_ts.csv', content: bad);
+      const sel = FileSelection(fileName: 'bad_ts.csv', content: bad);
       final events = await _collect(_svc, sel, SensorPosition.front);
       // Should still succeed (validation errors don't block success),
       // but the report should not pass.
