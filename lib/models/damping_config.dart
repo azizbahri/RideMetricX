@@ -1,12 +1,3 @@
-/// Direction of suspension travel for a damping calculation.
-enum DampingDirection {
-  /// Suspension is compressing (moving inward).
-  compression,
-
-  /// Suspension is extending (moving outward / rebounding).
-  rebound,
-}
-
 /// The type of damping model to apply (FR-SM-002).
 enum DampingType {
   /// Linear damping: F = c × v
@@ -14,10 +5,10 @@ enum DampingType {
 
   /// Bi-linear (low-speed / high-speed) damping:
   /// ```
-  /// F = c_low × v          if |v| < v_threshold
-  /// F = c_high × v + offset if |v| ≥ v_threshold
+  /// F = c_low × v                      if |v| < v_threshold
+  /// F = c_high × v + offset × sign(v)  if |v| ≥ v_threshold
   /// ```
-  /// where offset ensures force continuity at the threshold.
+  /// where offset × sign(v) ensures force continuity at ±v_threshold.
   biLinear,
 
   /// Non-linear damping extension hook:

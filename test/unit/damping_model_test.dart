@@ -274,10 +274,12 @@ void main() {
     });
 
     test('force at threshold equals c_low × threshold', () {
-      // Exactly at threshold (|v| == threshold, uses low-speed branch)
+      // At exactly the threshold, _biLinear uses the high-speed branch
+      // (absV < threshold is false), but the continuity offset guarantees
+      // F(threshold) == cLow * threshold regardless of which branch runs.
       final result = DampingModel.calculateForce(
         biLinearConfig,
-        velocityMps: threshold - 1e-12, // just below
+        velocityMps: threshold,
       );
       expect(result.forceN, closeTo(cLow * threshMmS, 1e-6));
     });
@@ -448,7 +450,7 @@ void main() {
 
     test('coefficient is monotonically increasing with clicks', () {
       double prev = ClickMapper.clicksToCoefficient(0, base);
-      for (int clicks = 1; clicks <= 20; clicks++) {
+      for (double clicks = 1; clicks <= 20; clicks++) {
         final current = ClickMapper.clicksToCoefficient(clicks, base);
         expect(current, greaterThan(prev));
         prev = current;
@@ -456,7 +458,7 @@ void main() {
     });
 
     test('factor scales linearly: (clicks/range) × 2 + 1', () {
-      for (int clicks = 0; clicks <= 20; clicks++) {
+      for (double clicks = 0; clicks <= 20; clicks++) {
         final result = ClickMapper.clicksToCoefficient(clicks, base);
         final expectedFactor = 1.0 + (clicks / 20) * 2.0;
         expect(result, closeTo(base * expectedFactor, 1e-9));
@@ -470,14 +472,14 @@ void main() {
     });
 
     test('coefficient minimum is baseCoefficient (at 0 clicks)', () {
-      for (int clicks = 0; clicks <= 20; clicks++) {
+      for (double clicks = 0; clicks <= 20; clicks++) {
         final c = ClickMapper.clicksToCoefficient(clicks, base);
         expect(c, greaterThanOrEqualTo(base));
       }
     });
 
     test('coefficient maximum is 3 × baseCoefficient (at max clicks)', () {
-      for (int clicks = 0; clicks <= 20; clicks++) {
+      for (double clicks = 0; clicks <= 20; clicks++) {
         final c = ClickMapper.clicksToCoefficient(clicks, base);
         expect(c, lessThanOrEqualTo(base * 3.0 + 1e-9));
       }

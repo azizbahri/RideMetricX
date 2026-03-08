@@ -31,9 +31,9 @@ class ClickMapper {
   /// - [clicksRange] ≤ 0, or
   /// - [baseCoefficient] ≤ 0.
   static double clicksToCoefficient(
-    int clicks,
+    double clicks,
     double baseCoefficient, {
-    int clicksRange = 20,
+    double clicksRange = 20.0,
   }) {
     if (clicksRange <= 0) {
       throw ArgumentError.value(
