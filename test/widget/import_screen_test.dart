@@ -423,7 +423,8 @@ void main() {
   group('ImportScreen in app shell', () {
     testWidgets('import screen renders within RideMetricXApp', (tester) async {
       await tester.pumpWidget(const RideMetricXApp());
-      expect(find.text('Import Data'), findsWidgets);
+      // 'Import Data' appears in the screen body heading.
+      expect(find.text('Import Data'), findsOneWidget);
     });
   });
 }

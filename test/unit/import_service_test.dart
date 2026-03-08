@@ -93,9 +93,17 @@ void main() {
       expect(s.message, 'oops');
     });
 
-    test('ImportSuccess carries report, position, fileName, and samples', () {
-      // Build a minimal success state via the service to avoid constructing
-      // ValidationReport directly.
+    test('ImportSuccess carries report, position, fileName, and samples',
+        () async {
+      // Import valid CSV to obtain a real ImportSuccess state.
+      const sel = FileSelection(fileName: 'front.csv', content: _validCsv);
+      final events = await _collect(_svc, sel, SensorPosition.front);
+      final success = events.last as ImportSuccess;
+      expect(success, isA<ImportState>());
+      expect(success.position, SensorPosition.front);
+      expect(success.fileName, 'front.csv');
+      expect(success.samples, isNotEmpty);
+      expect(success.report, isNotNull);
     });
   });
 
