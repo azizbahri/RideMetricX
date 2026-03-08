@@ -15,9 +15,10 @@ class ImuLimits {
   /// Maximum plausible board temperature in °C.
   static const double maxTempC = 85.0;
 
-  /// Maximum tolerated absolute sync offset between front/rear sensors (ms).
+  /// Maximum tolerated relative sync offset between front/rear sensors (ms).
   /// Requirement: <100 ms over a 2-hour session (TC-DC-007).
-  static const int maxSyncOffsetMs = 100;
+  /// A value of 99 enforces the strict less-than boundary.
+  static const int maxSyncOffsetMs = 99;
 
   /// Fraction of the nominal interval used as per-sample jitter tolerance.
   /// 10 % gives headroom for individual timing noise while still catching
@@ -97,7 +98,16 @@ class ImuValidator {
   }
 
   /// Validates that front and rear [SessionMetadata] are properly paired and
-  /// that the sync offset does not exceed [ImuLimits.maxSyncOffsetMs] (TC-DC-007).
+  /// that the relative sync offset does not exceed [ImuLimits.maxSyncOffsetMs]
+  /// (TC-DC-007).
+  ///
+  /// The relative offset is `abs(front.syncOffsetMs - rear.syncOffsetMs)`,
+  /// which correctly handles cases where both sensors have non-zero absolute
+  /// offsets from a shared reference clock (e.g. front=+80ms, rear=−80ms
+  /// gives a relative offset of 160ms).
+  ///
+  /// When [SessionMetadata.pairedSessionId] is set on either session, it is
+  /// verified to match the other session's [SessionMetadata.sessionId].
   static ValidationResult validateSync(
     SessionMetadata front,
     SessionMetadata rear,
@@ -112,10 +122,28 @@ class ImuValidator {
       errors.add('Second argument must have position == SensorPosition.rear.');
     }
 
-    final offsetMs = front.syncOffsetMs.abs();
-    if (offsetMs > ImuLimits.maxSyncOffsetMs) {
+    // Validate pairing consistency when paired session IDs are provided.
+    if (front.pairedSessionId != null &&
+        front.pairedSessionId != rear.sessionId) {
       errors.add(
-        'Sync offset ${offsetMs}ms exceeds maximum '
+        'Front session pairedSessionId "${front.pairedSessionId}" '
+        'does not match rear sessionId "${rear.sessionId}".',
+      );
+    }
+    if (rear.pairedSessionId != null &&
+        rear.pairedSessionId != front.sessionId) {
+      errors.add(
+        'Rear session pairedSessionId "${rear.pairedSessionId}" '
+        'does not match front sessionId "${front.sessionId}".',
+      );
+    }
+
+    // Relative offset between the two sessions.
+    final relativeOffsetMs =
+        (front.syncOffsetMs - rear.syncOffsetMs).abs();
+    if (relativeOffsetMs > ImuLimits.maxSyncOffsetMs) {
+      errors.add(
+        'Relative sync offset ${relativeOffsetMs}ms exceeds maximum '
         '${ImuLimits.maxSyncOffsetMs}ms (TC-DC-007).',
       );
     }

@@ -251,7 +251,7 @@ void main() {
   // ── TC-DC-007: Front/rear time synchronisation ────────────────────────────
 
   group('TC-DC-007: Front/rear time synchronisation (<100 ms)', () {
-    test('passes when sync offset is within 100 ms', () {
+    test('passes when relative sync offset is within limit (50 ms)', () {
       final front = SessionMetadata(
         sessionId: 'front-001',
         position: SensorPosition.front,
@@ -268,31 +268,76 @@ void main() {
       expect(result.isValid, isTrue);
     });
 
-    test('passes when sync offset is exactly 100 ms', () {
+    test('passes when relative sync offset is exactly 99 ms', () {
       final front = SessionMetadata(
         sessionId: 'front-002',
         position: SensorPosition.front,
-        syncOffsetMs: 100,
+        syncOffsetMs: 99,
         pairedSessionId: 'rear-002',
       );
       final rear = SessionMetadata(
         sessionId: 'rear-002',
         position: SensorPosition.rear,
+        syncOffsetMs: 0,
+        pairedSessionId: 'front-002',
       );
       final result = ImuValidator.validateSync(front, rear);
       expect(result.isValid, isTrue);
     });
 
-    test('fails when sync offset exceeds 100 ms', () {
+    test('fails when relative sync offset is exactly 100 ms', () {
       final front = SessionMetadata(
         sessionId: 'front-003',
         position: SensorPosition.front,
-        syncOffsetMs: 250,
+        syncOffsetMs: 100,
         pairedSessionId: 'rear-003',
       );
       final rear = SessionMetadata(
         sessionId: 'rear-003',
         position: SensorPosition.rear,
+        syncOffsetMs: 0,
+        pairedSessionId: 'front-003',
+      );
+      final result = ImuValidator.validateSync(front, rear);
+      expect(result.isValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('TC-DC-007')),
+        isTrue,
+      );
+    });
+
+    test('fails when relative sync offset exceeds limit (250 ms)', () {
+      final front = SessionMetadata(
+        sessionId: 'front-004',
+        position: SensorPosition.front,
+        syncOffsetMs: 250,
+        pairedSessionId: 'rear-004',
+      );
+      final rear = SessionMetadata(
+        sessionId: 'rear-004',
+        position: SensorPosition.rear,
+        pairedSessionId: 'front-004',
+      );
+      final result = ImuValidator.validateSync(front, rear);
+      expect(result.isValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('TC-DC-007')),
+        isTrue,
+      );
+    });
+
+    test(
+        'fails when combined offsets exceed limit '
+        '(front=+80ms, rear=−80ms → relative=160ms)', () {
+      final front = SessionMetadata(
+        sessionId: 'front-005',
+        position: SensorPosition.front,
+        syncOffsetMs: 80,
+      );
+      final rear = SessionMetadata(
+        sessionId: 'rear-005',
+        position: SensorPosition.rear,
+        syncOffsetMs: -80,
       );
       final result = ImuValidator.validateSync(front, rear);
       expect(result.isValid, isFalse);
@@ -313,6 +358,24 @@ void main() {
       );
       final result = ImuValidator.validateSync(a, b);
       expect(result.isValid, isFalse);
+    });
+
+    test('fails when pairedSessionId does not match peer sessionId', () {
+      final front = SessionMetadata(
+        sessionId: 'front-006',
+        position: SensorPosition.front,
+        pairedSessionId: 'rear-999', // wrong
+      );
+      final rear = SessionMetadata(
+        sessionId: 'rear-006',
+        position: SensorPosition.rear,
+      );
+      final result = ImuValidator.validateSync(front, rear);
+      expect(result.isValid, isFalse);
+      expect(
+        result.errors.any((e) => e.contains('pairedSessionId')),
+        isTrue,
+      );
     });
   });
 
@@ -357,6 +420,23 @@ timestamp_ms,accel_x_g,accel_y_g
       expect(() => CsvParser.parse(csv), throwsFormatException);
     });
 
+    test('throws FormatException when column order is wrong', () {
+      // accel_y_g and accel_x_g are swapped.
+      const csv = '''
+timestamp_ms,accel_y_g,accel_x_g,accel_z_g,gyro_x_dps,gyro_y_dps,gyro_z_dps,temp_c,sample_count
+0,0.02,-0.01,1.00,0.5,-0.3,0.1,25.3,0
+''';
+      expect(() => CsvParser.parse(csv), throwsFormatException);
+    });
+
+    test('throws FormatException when header has extra columns', () {
+      const csv = '''
+timestamp_ms,accel_x_g,accel_y_g,accel_z_g,gyro_x_dps,gyro_y_dps,gyro_z_dps,temp_c,sample_count,extra_col
+0,0.02,-0.01,1.00,0.5,-0.3,0.1,25.3,0,99
+''';
+      expect(() => CsvParser.parse(csv), throwsFormatException);
+    });
+
     test('parsed samples pass ImuValidator', () {
       final samples = CsvParser.parse(validCsv);
       final result = ImuValidator.validate(samples, expectedRateHz: 200.0);
@@ -382,6 +462,16 @@ timestamp_ms,accel_x_g,accel_y_g
     test('fromCsvRow throws FormatException when too few columns', () {
       expect(
         () => ImuSample.fromCsvRow(['0', '1.0', '0.5']),
+        throwsFormatException,
+      );
+    });
+
+    test('fromCsvRow throws FormatException when too many columns', () {
+      expect(
+        () => ImuSample.fromCsvRow([
+          '0', '0.02', '-0.01', '1.00', '0.5', '-0.3', '0.1', '25.3', '0',
+          'extra',
+        ]),
         throwsFormatException,
       );
     });

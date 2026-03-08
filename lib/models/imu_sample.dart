@@ -48,9 +48,9 @@ class ImuSample {
   /// `timestamp_ms, accel_x_g, accel_y_g, accel_z_g,
   ///  gyro_x_dps, gyro_y_dps, gyro_z_dps, temp_c, sample_count`
   factory ImuSample.fromCsvRow(List<String> row) {
-    if (row.length < 9) {
+    if (row.length != 9) {
       throw FormatException(
-        'CSV row must have at least 9 columns, got ${row.length}.',
+        'CSV row must have exactly 9 columns, got ${row.length}.',
       );
     }
     return ImuSample(
