@@ -280,7 +280,7 @@ void main() {
     });
 
     testWidgets('zero delta shows 0.0 without + or - prefix', (tester) async {
-      final identical = const TuningParameters(
+      const identical = TuningParameters(
         front: SuspensionParameters(
           springRate: 30.0,
           compression: 12.0,
