@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 import 'package:flutter/foundation.dart';
 
 import '../models/session_metadata.dart';
@@ -10,15 +12,30 @@ import '../models/session_metadata.dart';
 class SessionRepository extends ChangeNotifier {
   final List<SessionMetadata> _sessions = [];
 
-  /// An unmodifiable snapshot of the current session list.
-  List<SessionMetadata> get sessions => List.unmodifiable(_sessions);
+  /// A live, unmodifiable view of the current session list.
+  ///
+  /// Callers receive a view backed by the same underlying list, so they
+  /// should not cache the reference across mutations; use [addListener] to
+  /// react to changes instead.
+  UnmodifiableListView<SessionMetadata> get sessions =>
+      UnmodifiableListView(_sessions);
 
   /// Whether the repository contains no sessions.
   bool get isEmpty => _sessions.isEmpty;
 
   /// Adds [session] to the repository and notifies listeners.
+  ///
+  /// If a session with the same [SessionMetadata.sessionId] already exists,
+  /// it is replaced to maintain uniqueness by ID.
   void add(SessionMetadata session) {
-    _sessions.add(session);
+    final index = _sessions.indexWhere(
+      (existing) => existing.sessionId == session.sessionId,
+    );
+    if (index >= 0) {
+      _sessions[index] = session;
+    } else {
+      _sessions.add(session);
+    }
     notifyListeners();
   }
 

@@ -67,10 +67,25 @@ void main() {
     test('sessions list is unmodifiable', () {
       repo.add(_makeSession());
       expect(
-        () =>
-            (repo.sessions as List<SessionMetadata>).add(_makeSession(id: 'x')),
+        () => repo.sessions.add(_makeSession(id: 'x')),
         throwsUnsupportedError,
       );
+    });
+
+    test(
+        'add with duplicate sessionId replaces existing and notifies listeners',
+        () {
+      final original = _makeSession(id: 'dup', samplingRateHz: 200.0);
+      final replacement = _makeSession(id: 'dup', samplingRateHz: 400.0);
+      repo.add(original);
+
+      var notified = false;
+      repo.addListener(() => notified = true);
+      repo.add(replacement);
+
+      expect(repo.sessions, hasLength(1));
+      expect(repo.sessions.first.samplingRateHz, equals(400.0));
+      expect(notified, isTrue);
     });
 
     test('delete removes the correct session and notifies listeners', () {
@@ -388,7 +403,14 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('open-me'), findsWidgets);
+      expect(find.byType(SnackBar), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(SnackBar),
+          matching: find.textContaining('open-me'),
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('tapping open does not remove session from repository',
