@@ -348,31 +348,29 @@ class _ComparisonTable extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Flexible(
-                child: Text(
-                  snapshot.label,
-                  style: textTheme.labelLarge,
-                  overflow: TextOverflow.ellipsis,
+          Text(
+            snapshot.label,
+            style: textTheme.labelLarge,
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
+          if (isBaseline) ...[
+            const SizedBox(height: 2),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                'baseline',
+                style: textTheme.labelSmall?.copyWith(
+                  color: colorScheme.onPrimaryContainer,
                 ),
               ),
-              if (isBaseline) ...[
-                const SizedBox(width: 4),
-                Chip(
-                  label: const Text('baseline'),
-                  padding: EdgeInsets.zero,
-                  labelPadding:
-                      const EdgeInsets.symmetric(horizontal: 4),
-                  visualDensity: VisualDensity.compact,
-                  backgroundColor: colorScheme.primaryContainer,
-                  labelStyle: textTheme.labelSmall?.copyWith(
-                    color: colorScheme.onPrimaryContainer,
-                  ),
-                ),
-              ],
-            ],
-          ),
+            ),
+          ],
+          const SizedBox(height: 2),
           Text(
             _formatDate(snapshot.createdAt),
             style:
