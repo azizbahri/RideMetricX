@@ -255,8 +255,13 @@ void main() {
       );
 
       // Start the simulation.
+      // Two pumps are required: the first processes the tap and schedules the
+      // zero-duration debounce timer; the second fires that timer so _execute()
+      // runs and the state transitions to 'running'.
       await tester.tap(find.byKey(TuningScreen.runButtonKey));
-      await tester.pump(); // process tap + pending microtasks
+      await tester
+          .pump(); // process tap → schedules Timer(Duration.zero, _execute)
+      await tester.pump(); // fire the timer → state becomes 'running' → rebuild
 
       // The button should now say "Running…" and be disabled.
       expect(find.text('Running…'), findsOneWidget);
