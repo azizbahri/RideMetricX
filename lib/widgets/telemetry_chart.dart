@@ -62,10 +62,22 @@ class ChartViewport {
 ///
 /// Renders one or more [TelemetrySeries] over a shared x-axis. Zoom and pan
 /// are handled via scale/drag gestures. Tapping the canvas places a crosshair
-/// at the selected data position. An export button calls [onExport] when set.
+/// at the selected **data-space** position, so it stays anchored to the same
+/// data point after any subsequent pan or zoom. An export button calls
+/// [onExport] when set.
 ///
 /// The chart state (viewport, crosshair) is kept alive across [TabBarView]
 /// transitions via [AutomaticKeepAliveClientMixin].
+///
+/// ## Test targeting
+/// Internal elements (canvas, export button, reset button) are given keys
+/// derived from this widget's own [key]. If the chart is given
+/// `key: ValueKey('chart_myTab')`, its canvas has key
+/// `ValueKey('chart_myTab_canvas')`, its export button
+/// `ValueKey('chart_myTab_export')`, and its reset button
+/// `ValueKey('chart_myTab_reset')`.  Use `find.descendant` with the chart's
+/// per-instance key to target these elements without ambiguity when multiple
+/// [TelemetryChart] instances are alive simultaneously.
 class TelemetryChart extends StatefulWidget {
   const TelemetryChart({
     super.key,
@@ -82,7 +94,7 @@ class TelemetryChart extends StatefulWidget {
   /// Label shown below the x-axis.
   final String xLabel;
 
-  /// Label shown to the left of the y-axis.
+  /// Label shown to the left of the y-axis (rendered rotated).
   final String yLabel;
 
   /// Called when the user taps the export button. If `null` the button is
@@ -93,14 +105,10 @@ class TelemetryChart extends StatefulWidget {
   /// Limits rendering cost for large datasets (NFR-UI-005).
   final int maxRenderedPoints;
 
-  // ── Semantic keys for tests ────────────────────────────────────────────────
-  static const Key exportButtonKey = Key('telemetry_chart_export');
-  static const Key resetZoomKey = Key('telemetry_chart_reset_zoom');
-  static const Key chartCanvasKey = Key('telemetry_chart_canvas');
-
   /// Reduces [points] to at most [maxPoints] while preserving signal shape by
   /// retaining the min/max envelope within each bucket.
   ///
+  /// Returns an empty list when [maxPoints] ≤ 0.
   /// Exposed as a static method so unit tests can verify the decimation logic
   /// directly without pumping a widget.
   static List<Offset> decimate(List<Offset> points, int maxPoints) {
@@ -122,12 +130,23 @@ class TelemetryChartState extends State<TelemetryChart>
   late ChartViewport _viewport;
   bool _viewportModified = false;
 
-  // Crosshair position in canvas-space coordinates, or null.
+  // Crosshair position in **data-space** coordinates, or null.
+  // Storing data-space (not canvas-space) ensures the crosshair stays anchored
+  // to the same data point after any pan or zoom.
   Offset? _crosshair;
 
   // Baseline captured at the start of each scale/pan gesture.
   ChartViewport? _gestureBaseViewport;
   Offset? _gestureFocalStart;
+
+  // Canvas size captured by LayoutBuilder; used for pixel↔data conversions in
+  // gesture handlers.  Avoids a RenderBox lookup on the wrong ancestor.
+  Size _canvasSize = Size.zero;
+
+  // Decimation cache: avoid rebuilding the decimated list on every render.
+  List<TelemetrySeries>? _decimatedCache;
+  List<TelemetrySeries>? _cachedOriginalSeries;
+  int? _cachedMaxRenderedPoints;
 
   // ── Public API for tests ───────────────────────────────────────────────────
 
@@ -188,6 +207,43 @@ class TelemetryChartState extends State<TelemetryChart>
     );
   }
 
+  // ── Decimation cache ───────────────────────────────────────────────────────
+
+  /// Returns the decimated series list, reusing the cached result when the
+  /// source series and [maxRenderedPoints] have not changed.
+  List<TelemetrySeries> _getDecimated() {
+    if (identical(_cachedOriginalSeries, widget.series) &&
+        _cachedMaxRenderedPoints == widget.maxRenderedPoints) {
+      return _decimatedCache!;
+    }
+    _cachedOriginalSeries = widget.series;
+    _cachedMaxRenderedPoints = widget.maxRenderedPoints;
+    _decimatedCache = [
+      for (final s in widget.series)
+        TelemetrySeries(
+          label: s.label,
+          color: s.color,
+          points: _decimate(s.points, widget.maxRenderedPoints),
+          plotType: s.plotType,
+        ),
+    ];
+    return _decimatedCache!;
+  }
+
+  // ── Key derivation ─────────────────────────────────────────────────────────
+
+  /// Derives an instance-specific [Key] for an internal sub-element.
+  ///
+  /// If this widget has a [ValueKey<String>] key (e.g.
+  /// `ValueKey('chart_myTab')`), the returned key is
+  /// `ValueKey('chart_myTab_$suffix')`.  When no string key is present,
+  /// returns `null` (no key assigned to the internal element).
+  Key? _deriveKey(String suffix) {
+    final k = widget.key;
+    if (k is ValueKey<String>) return ValueKey('${k.value}_$suffix');
+    return null;
+  }
+
   // ── Gesture handlers ───────────────────────────────────────────────────────
 
   void _onScaleStart(ScaleStartDetails details) {
@@ -200,9 +256,9 @@ class TelemetryChartState extends State<TelemetryChart>
     final focal = _gestureFocalStart;
     if (base == null || focal == null) return;
 
-    final renderBox = context.findRenderObject() as RenderBox?;
-    if (renderBox == null) return;
-    final size = renderBox.size;
+    // Use the canvas size captured by LayoutBuilder — localFocalPoint is in
+    // the GestureDetector's coordinate space, which matches _canvasSize.
+    final size = _canvasSize;
     if (size.isEmpty) return;
 
     final delta = details.localFocalPoint - focal;
@@ -247,9 +303,30 @@ class TelemetryChartState extends State<TelemetryChart>
   }
 
   void _onTapDown(TapDownDetails details) {
-    setState(() {
-      _crosshair = details.localPosition;
-    });
+    final size = _canvasSize;
+    if (size.isEmpty) return;
+
+    // Map the tap's canvas-space position to the plot area, then convert to
+    // data-space.  plotRect margins mirror those defined in _ChartPainter.
+    final plotLeft = _ChartPainter._left;
+    final plotTop = _ChartPainter._top;
+    final plotWidth = size.width - _ChartPainter._left - _ChartPainter._right;
+    final plotHeight = size.height - _ChartPainter._top - _ChartPainter._bottom;
+
+    final local = details.localPosition;
+
+    // Ignore taps that land outside the plot area (axis-label margins).
+    if (local.dx < plotLeft ||
+        local.dx > plotLeft + plotWidth ||
+        local.dy < plotTop ||
+        local.dy > plotTop + plotHeight) return;
+
+    final dataX =
+        _viewport.xMin + (local.dx - plotLeft) / plotWidth * _viewport.xRange;
+    final dataY =
+        _viewport.yMax - (local.dy - plotTop) / plotHeight * _viewport.yRange;
+
+    setState(() => _crosshair = Offset(dataX, dataY));
   }
 
   void _resetZoom() {
@@ -286,13 +363,13 @@ class TelemetryChartState extends State<TelemetryChart>
         children: [
           if (_viewportModified)
             TextButton.icon(
-              key: TelemetryChart.resetZoomKey,
+              key: _deriveKey('reset'),
               onPressed: _resetZoom,
               icon: const Icon(Icons.zoom_out_map, size: 18),
               label: const Text('Reset View'),
             ),
           IconButton(
-            key: TelemetryChart.exportButtonKey,
+            key: _deriveKey('export'),
             tooltip: 'Export as CSV',
             onPressed: widget.onExport,
             icon: const Icon(Icons.download_outlined),
@@ -303,38 +380,35 @@ class TelemetryChartState extends State<TelemetryChart>
   }
 
   Widget _buildCanvas(ColorScheme colorScheme, TextTheme textTheme) {
-    final decimated = [
-      for (final s in widget.series)
-        TelemetrySeries(
-          label: s.label,
-          color: s.color,
-          points: _decimate(s.points, widget.maxRenderedPoints),
-          plotType: s.plotType,
-        ),
-    ];
+    final decimated = _getDecimated();
 
-    return GestureDetector(
-      key: TelemetryChart.chartCanvasKey,
-      behavior: HitTestBehavior.opaque,
-      onScaleStart: _onScaleStart,
-      onScaleUpdate: _onScaleUpdate,
-      onTapDown: _onTapDown,
-      child: CustomPaint(
-        painter: _ChartPainter(
-          series: decimated,
-          viewport: _viewport,
-          xLabel: widget.xLabel,
-          yLabel: widget.yLabel,
-          crosshair: _crosshair,
-          gridColor: colorScheme.outlineVariant,
-          axisColor: colorScheme.outline,
-          textStyle: textTheme.bodySmall!.copyWith(
-            fontSize: 10,
-            color: colorScheme.onSurface,
+    return LayoutBuilder(
+      builder: (_, constraints) {
+        _canvasSize = Size(constraints.maxWidth, constraints.maxHeight);
+        return GestureDetector(
+          key: _deriveKey('canvas'),
+          behavior: HitTestBehavior.opaque,
+          onScaleStart: _onScaleStart,
+          onScaleUpdate: _onScaleUpdate,
+          onTapDown: _onTapDown,
+          child: CustomPaint(
+            painter: _ChartPainter(
+              series: decimated,
+              viewport: _viewport,
+              xLabel: widget.xLabel,
+              yLabel: widget.yLabel,
+              crosshair: _crosshair,
+              gridColor: colorScheme.outlineVariant,
+              axisColor: colorScheme.outline,
+              textStyle: textTheme.bodySmall!.copyWith(
+                fontSize: 10,
+                color: colorScheme.onSurface,
+              ),
+            ),
+            child: const SizedBox.expand(),
           ),
-        ),
-        child: const SizedBox.expand(),
-      ),
+        );
+      },
     );
   }
 
@@ -357,7 +431,10 @@ class TelemetryChartState extends State<TelemetryChart>
 
 /// Reduces [points] to at most [maxPoints] while preserving signal shape by
 /// keeping the min and max y-value within each equal-width bucket.
+///
+/// Returns an empty list when [maxPoints] ≤ 0.
 List<Offset> _decimate(List<Offset> points, int maxPoints) {
+  if (maxPoints <= 0) return const [];
   if (points.length <= maxPoints) return points;
 
   final result = <Offset>[];
@@ -420,10 +497,12 @@ class _ChartPainter extends CustomPainter {
   final Color gridColor;
   final Color axisColor;
   final TextStyle textStyle;
+
+  /// Crosshair position in **data-space** coordinates, or null.
   final Offset? crosshair;
 
   // Fixed margins (logical pixels) for axis labels.
-  static const double _left = 52;
+  static const double _left = 58;
   static const double _bottom = 40;
   static const double _top = 8;
   static const double _right = 8;
@@ -509,13 +588,21 @@ class _ChartPainter extends CustomPainter {
         TextAlign.right,
       );
     }
-    // Axis title labels.
+
+    // X-axis title.
     _drawText(
       canvas,
       xLabel,
       Offset(plotRect.center.dx, size.height - 3),
       TextAlign.center,
     );
+
+    // Y-axis title: rotated 90° CCW, centred on the plot height.
+    canvas.save();
+    canvas.translate(10, plotRect.center.dy);
+    canvas.rotate(-math.pi / 2);
+    _drawText(canvas, yLabel, Offset.zero, TextAlign.center);
+    canvas.restore();
   }
 
   void _drawSeries(Canvas canvas, Rect plotRect) {
@@ -550,25 +637,32 @@ class _ChartPainter extends CustomPainter {
     }
   }
 
-  void _drawCrosshair(Canvas canvas, Rect plotRect, Offset canvasPos) {
-    if (!plotRect.contains(canvasPos)) return;
+  /// Draws the crosshair.  [dataPos] is in **data-space** and is converted to
+  /// canvas coordinates here so that it stays anchored to the same data point
+  /// as the viewport changes.
+  void _drawCrosshair(Canvas canvas, Rect plotRect, Offset dataPos) {
+    final cx = _toCanvasX(dataPos.dx, plotRect);
+    final cy = _toCanvasY(dataPos.dy, plotRect);
+
+    // Only draw when the selected point is within the current viewport.
+    if (cx < plotRect.left ||
+        cx > plotRect.right ||
+        cy < plotRect.top ||
+        cy > plotRect.bottom) return;
+
     final paint = Paint()
       ..color = axisColor.withAlpha(179)
       ..strokeWidth = 1.0;
-    canvas.drawLine(Offset(canvasPos.dx, plotRect.top),
-        Offset(canvasPos.dx, plotRect.bottom), paint);
-    canvas.drawLine(Offset(plotRect.left, canvasPos.dy),
-        Offset(plotRect.right, canvasPos.dy), paint);
+    canvas.drawLine(
+        Offset(cx, plotRect.top), Offset(cx, plotRect.bottom), paint);
+    canvas.drawLine(
+        Offset(plotRect.left, cy), Offset(plotRect.right, cy), paint);
 
-    // Annotation with data-space coordinates.
-    final xData = viewport.xMin +
-        (canvasPos.dx - plotRect.left) / plotRect.width * viewport.xRange;
-    final yData = viewport.yMin +
-        (plotRect.bottom - canvasPos.dy) / plotRect.height * viewport.yRange;
+    // Annotation with data-space coordinates (already available directly).
     _drawText(
       canvas,
-      '(${_fmt(xData)}, ${_fmt(yData)})',
-      Offset(canvasPos.dx + 4, canvasPos.dy - 14),
+      '(${_fmt(dataPos.dx)}, ${_fmt(dataPos.dy)})',
+      Offset(cx + 4, cy - 14),
       TextAlign.left,
     );
   }
@@ -597,10 +691,15 @@ class _ChartPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_ChartPainter old) =>
-      series != old.series ||
-      viewport != old.viewport ||
-      crosshair != old.crosshair;
+  bool shouldRepaint(_ChartPainter old) {
+    if (viewport != old.viewport || crosshair != old.crosshair) return true;
+    if (identical(series, old.series)) return false;
+    if (series.length != old.series.length) return true;
+    for (int i = 0; i < series.length; i++) {
+      if (series[i] != old.series[i]) return true;
+    }
+    return false;
+  }
 }
 
 // ── Legend item ───────────────────────────────────────────────────────────────

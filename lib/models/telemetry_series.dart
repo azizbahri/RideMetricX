@@ -33,4 +33,19 @@ class TelemetrySeries {
     required this.points,
     this.plotType = PlotType.line,
   });
+
+  /// Two series are equal when their metadata matches and they reference the
+  /// same [points] list (identity, not deep equality).  This allows caching
+  /// logic in [TelemetryChart] to skip repaints when the series list is reused.
+  @override
+  bool operator ==(Object other) =>
+      other is TelemetrySeries &&
+      label == other.label &&
+      color == other.color &&
+      plotType == other.plotType &&
+      identical(points, other.points);
+
+  @override
+  int get hashCode =>
+      Object.hash(label, color, plotType, identityHashCode(points));
 }

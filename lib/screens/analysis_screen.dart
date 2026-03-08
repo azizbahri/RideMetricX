@@ -10,11 +10,18 @@ import '../widgets/telemetry_chart.dart';
 /// Defines a single named tab in the [AnalysisScreen] workspace.
 class ChartTab {
   const ChartTab({
+    String? id,
     required this.title,
     required this.series,
     this.xLabel = 'Time (ms)',
     this.yLabel = 'Value',
-  });
+  }) : id = id ?? title;
+
+  /// Stable unique identifier used as the [TelemetryChart] widget key.
+  ///
+  /// Defaults to [title] when not supplied.  When two tabs share the same
+  /// [title], pass a distinct [id] to prevent duplicate sibling keys.
+  final String id;
 
   /// Tab label shown in the [TabBar].
   final String title;
@@ -83,8 +90,9 @@ class AnalysisScreen extends StatelessWidget {
         isScrollable: true,
         tabAlignment: TabAlignment.start,
         tabs: [
-          for (final tab in tabs)
-            Tab(key: ValueKey(tab.title), text: tab.title),
+          // No key on Tab: the TabBar/TabController relies on position, not
+          // key, to track the selected tab.
+          for (final tab in tabs) Tab(text: tab.title),
         ],
       ),
     );
@@ -104,9 +112,10 @@ class _ChartTabPage extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(8),
       child: TelemetryChart(
-        // Stable key per tab title so tests can target specific charts when
-        // AutomaticKeepAliveClientMixin keeps multiple tabs alive simultaneously.
-        key: ValueKey('chart_${tab.title}'),
+        // Keyed by tab.id so the derived sub-keys (canvas/export/reset) are
+        // also unique when AutomaticKeepAliveClientMixin keeps multiple charts
+        // alive simultaneously.
+        key: ValueKey('chart_${tab.id}'),
         series: tab.series,
         xLabel: tab.xLabel,
         yLabel: tab.yLabel,

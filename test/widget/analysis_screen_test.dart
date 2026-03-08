@@ -60,6 +60,21 @@ ChartTab _makeTab({
   );
 }
 
+/// Returns a [Finder] for the canvas [GestureDetector] of a chart keyed with
+/// [chartId].  Charts are keyed `ValueKey('chart_$chartId')` and the canvas
+/// is the derived key `ValueKey('chart_${chartId}_canvas')`.
+Finder _canvasFinder(String chartId) =>
+    find.byKey(ValueKey('chart_${chartId}_canvas'));
+
+/// Returns a [Finder] for the export button of a chart keyed with [chartId].
+Finder _exportFinder(String chartId) =>
+    find.byKey(ValueKey('chart_${chartId}_export'));
+
+/// Returns a [Finder] for the "Reset View" button of a chart keyed with
+/// [chartId].
+Finder _resetFinder(String chartId) =>
+    find.byKey(ValueKey('chart_${chartId}_reset'));
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 void main() {
@@ -153,7 +168,7 @@ void main() {
       await tester.tap(find.text('A'));
       await tester.pumpAndSettle();
 
-      // Tab A's chart must be in the tree.  Use the per-tab stable key to
+      // Tab A's chart must be in the tree. Use the per-tab stable key to
       // avoid ambiguity if AutomaticKeepAliveClientMixin keeps tab B alive.
       expect(find.byKey(const ValueKey('chart_A')), findsOneWidget);
     });
@@ -198,14 +213,11 @@ void main() {
       await _pumpAnalysis(tester, tabs: [tab1, tab2]);
 
       // Drag the chart canvas to modify the viewport.
-      await tester.drag(
-        find.byKey(TelemetryChart.chartCanvasKey),
-        const Offset(40, 0),
-      );
+      await tester.drag(_canvasFinder('Tab1'), const Offset(40, 0));
       await tester.pump();
 
       // Verify the viewport was modified (Reset View button appears).
-      expect(find.byKey(TelemetryChart.resetZoomKey), findsOneWidget);
+      expect(_resetFinder('Tab1'), findsOneWidget);
 
       // Switch to tab2 and back.
       await tester.tap(find.text('Tab2'));
@@ -214,7 +226,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // The viewport modification should still be in effect.
-      expect(find.byKey(TelemetryChart.resetZoomKey), findsOneWidget);
+      expect(_resetFinder('Tab1'), findsOneWidget);
     });
   });
 
@@ -301,7 +313,7 @@ void main() {
         (WidgetTester tester) async {
       await _pumpAnalysis(tester, tabs: [_makeTab(title: 'Accel')]);
 
-      await tester.tap(find.byKey(TelemetryChart.exportButtonKey));
+      await tester.tap(_exportFinder('Accel'));
       await tester.pumpAndSettle();
 
       expect(find.byType(SnackBar), findsOneWidget);
@@ -321,20 +333,17 @@ void main() {
         (WidgetTester tester) async {
       await _pumpAnalysis(tester, tabs: [_makeTab()]);
 
-      expect(find.byKey(TelemetryChart.resetZoomKey), findsNothing);
+      expect(_resetFinder('Test Tab'), findsNothing);
     });
 
     testWidgets('reset button appears after viewport is panned',
         (WidgetTester tester) async {
       await _pumpAnalysis(tester, tabs: [_makeTab()]);
 
-      await tester.drag(
-        find.byKey(TelemetryChart.chartCanvasKey),
-        const Offset(30, 0),
-      );
+      await tester.drag(_canvasFinder('Test Tab'), const Offset(30, 0));
       await tester.pump();
 
-      expect(find.byKey(TelemetryChart.resetZoomKey), findsOneWidget);
+      expect(_resetFinder('Test Tab'), findsOneWidget);
     });
 
     testWidgets('tapping reset button hides the reset button',
@@ -342,18 +351,15 @@ void main() {
       await _pumpAnalysis(tester, tabs: [_makeTab()]);
 
       // Pan to make the button appear.
-      await tester.drag(
-        find.byKey(TelemetryChart.chartCanvasKey),
-        const Offset(30, 0),
-      );
+      await tester.drag(_canvasFinder('Test Tab'), const Offset(30, 0));
       await tester.pump();
 
       // Tap the reset button.
-      await tester.tap(find.byKey(TelemetryChart.resetZoomKey));
+      await tester.tap(_resetFinder('Test Tab'));
       await tester.pump();
 
       // Button should disappear again.
-      expect(find.byKey(TelemetryChart.resetZoomKey), findsNothing);
+      expect(_resetFinder('Test Tab'), findsNothing);
     });
   });
 
@@ -407,6 +413,13 @@ void main() {
 
     test('decimate handles empty input', () {
       final result = TelemetryChart.decimate(const [], 500);
+      expect(result, isEmpty);
+    });
+
+    test('decimate with maxPoints = 0 returns empty list', () {
+      final points =
+          List.generate(10, (i) => Offset(i.toDouble(), i.toDouble()));
+      final result = TelemetryChart.decimate(points, 0);
       expect(result, isEmpty);
     });
   });
