@@ -1,6 +1,9 @@
 # RideMetricX
 
 [![Flutter CI](https://github.com/azizbahri/RideMetricX/actions/workflows/flutter.yml/badge.svg)](https://github.com/azizbahri/RideMetricX/actions/workflows/flutter.yml)
+[![Build Windows](https://github.com/azizbahri/RideMetricX/actions/workflows/flutter.yml/badge.svg?job=build-windows)](https://github.com/azizbahri/RideMetricX/actions/workflows/flutter.yml)
+[![Build Android](https://github.com/azizbahri/RideMetricX/actions/workflows/flutter.yml/badge.svg?job=build-android)](https://github.com/azizbahri/RideMetricX/actions/workflows/flutter.yml)
+[![Build iOS](https://github.com/azizbahri/RideMetricX/actions/workflows/flutter.yml/badge.svg?job=build-ios)](https://github.com/azizbahri/RideMetricX/actions/workflows/flutter.yml)
 
 Cross-platform (X) motorcycle suspension tuning simulator built with Flutter,
 targeting Windows, Android, and iOS.
@@ -76,4 +79,7 @@ and pull request. It:
 3. Checks formatting with `dart format`
 4. Runs `flutter analyze`
 5. Runs `flutter test`
+6. Builds for **Windows** (`windows-latest` runner)
+7. Builds for **Android** APK (`ubuntu-latest` runner)
+8. Builds for **iOS** without code signing (`macos-latest` runner)
 
