@@ -68,19 +68,18 @@ void main() {
     });
 
     testWidgets('throws ArgumentError when targetFps is zero', (tester) async {
-      await expectLater(
-        () => tester.pumpWidget(_wrap(const VisualizationWidget(targetFps: 0))),
-        throwsA(isA<ArgumentError>()),
+      await tester.pumpWidget(
+        _wrap(const VisualizationWidget(targetFps: 0)),
       );
+      expect(tester.takeException(), isA<ArgumentError>());
     });
 
     testWidgets('throws ArgumentError when targetFps is negative',
         (tester) async {
-      await expectLater(
-        () =>
-            tester.pumpWidget(_wrap(const VisualizationWidget(targetFps: -1))),
-        throwsA(isA<ArgumentError>()),
+      await tester.pumpWidget(
+        _wrap(const VisualizationWidget(targetFps: -1)),
       );
+      expect(tester.takeException(), isA<ArgumentError>());
     });
   });
 
