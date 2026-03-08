@@ -413,6 +413,57 @@ void main() {
       );
     });
 
+    testWidgets('tapping open invokes onOpenSession callback with the session',
+        (WidgetTester tester) async {
+      final repo = SessionRepository()..add(_makeSession(id: 'open-me'));
+      SessionMetadata? opened;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SessionsScreen(
+              repository: repo,
+              onOpenSession: (s) => opened = s,
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(
+        find.byWidgetPredicate(
+          (w) => w is Icon && w.icon == Icons.open_in_new,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(opened, isNotNull);
+      expect(opened!.sessionId, equals('open-me'));
+    });
+
+    testWidgets(
+        'tapping open does not show snackbar when onOpenSession is provided',
+        (WidgetTester tester) async {
+      final repo = SessionRepository()..add(_makeSession(id: 'open-me'));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SessionsScreen(
+              repository: repo,
+              onOpenSession: (_) {},
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(
+        find.byWidgetPredicate(
+          (w) => w is Icon && w.icon == Icons.open_in_new,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SnackBar), findsNothing);
+    });
+
     testWidgets('tapping open does not remove session from repository',
         (WidgetTester tester) async {
       final repo = SessionRepository()..add(_makeSession(id: 'stay'));

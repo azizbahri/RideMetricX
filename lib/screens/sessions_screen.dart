@@ -10,10 +10,16 @@ final _sharedRepository = SessionRepository();
 ///
 /// An optional [repository] may be supplied for testing; when omitted the
 /// app-wide [_sharedRepository] is used.
+///
+/// Provide [onOpenSession] to handle navigation when the user taps "Open
+/// session".  When omitted a transient snackbar is shown instead.
 class SessionsScreen extends StatelessWidget {
-  const SessionsScreen({super.key, this.repository});
+  const SessionsScreen({super.key, this.repository, this.onOpenSession});
 
   final SessionRepository? repository;
+
+  /// Called with the selected [SessionMetadata] when the user opens a session.
+  final void Function(SessionMetadata)? onOpenSession;
 
   SessionRepository get _repo => repository ?? _sharedRepository;
 
@@ -26,7 +32,11 @@ class SessionsScreen extends StatelessWidget {
         if (sessions.isEmpty) {
           return const _EmptyState();
         }
-        return _SessionList(sessions: sessions, repo: _repo);
+        return _SessionList(
+          sessions: sessions,
+          repo: _repo,
+          onOpenSession: onOpenSession,
+        );
       },
     );
   }
@@ -66,10 +76,15 @@ class _EmptyState extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _SessionList extends StatelessWidget {
-  const _SessionList({required this.sessions, required this.repo});
+  const _SessionList({
+    required this.sessions,
+    required this.repo,
+    this.onOpenSession,
+  });
 
   final List<SessionMetadata> sessions;
   final SessionRepository repo;
+  final void Function(SessionMetadata)? onOpenSession;
 
   @override
   Widget build(BuildContext context) {
@@ -88,7 +103,12 @@ class _SessionList extends StatelessWidget {
   }
 
   void _openSession(BuildContext context, SessionMetadata session) {
-    // Navigation to detail screen is blocked by dependent issues #48 / #50.
+    final handler = onOpenSession;
+    if (handler != null) {
+      handler(session);
+      return;
+    }
+    // Fallback when no navigation handler is wired up.
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Opening session ${session.sessionId}')),
     );

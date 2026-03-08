@@ -57,12 +57,16 @@ class AnalysisScreen extends StatelessWidget {
   const AnalysisScreen({
     super.key,
     this.tabs,
+    this.sessionTitle,
     this.recommendations,
     this.onApplyRecommendation,
   });
 
   /// Optional override for the chart tabs.  Inject a custom list in tests.
   final List<ChartTab>? tabs;
+
+  /// Optional session name shown as a header above the chart tabs.
+  final String? sessionTitle;
 
   /// When non-null, a [RecommendationsPanel] is shown below the chart area.
   final List<Recommendation>? recommendations;
@@ -96,6 +100,8 @@ class AnalysisScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (sessionTitle != null)
+            _SessionHeader(title: sessionTitle!),
           _buildTabBar(context, effectiveTabs),
           Expanded(
             child: TabBarView(
@@ -128,6 +134,42 @@ class AnalysisScreen extends StatelessWidget {
           // No key on Tab: the TabBar/TabController relies on position, not
           // key, to track the selected tab.
           for (final tab in tabs) Tab(text: tab.title),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Session header ────────────────────────────────────────────────────────────
+
+/// Displays the active session identifier above the chart tab bar.
+class _SessionHeader extends StatelessWidget {
+  const _SessionHeader({required this.title});
+
+  final String title;
+
+  static const Key headerKey = Key('analysis_session_header');
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Container(
+      key: headerKey,
+      color: colorScheme.surfaceContainerHighest,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          Icon(Icons.sensors, size: 16, color: colorScheme.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              title,
+              style: textTheme.bodyMedium
+                  ?.copyWith(color: colorScheme.onSurfaceVariant),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );
