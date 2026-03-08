@@ -280,6 +280,14 @@ class TelemetryChartState extends State<TelemetryChart>
       _viewportDecimatedCache = null;
       _cachedDecimationViewport = null;
     }
+    if (oldWidget.downsampleMethod != widget.downsampleMethod) {
+      // Algorithm changed: the viewport-aware cache was built with the old
+      // algorithm and must be discarded so the next debounce cycle rebuilds
+      // it with the newly selected method.
+      _viewportDecimationDebouncer.cancel();
+      _viewportDecimatedCache = null;
+      _cachedDecimationViewport = null;
+    }
   }
 
   @override
@@ -393,13 +401,17 @@ class TelemetryChartState extends State<TelemetryChart>
         }
       }
 
+      final downsample = widget.downsampleMethod == DownsampleMethod.lttb
+          ? _lttb
+          : _decimate;
+
       final clipped = [
         for (final s in widget.series)
           TelemetrySeries(
             label: s.label,
             color: s.color,
-            points:
-                _decimateViewport(s.points, widget.maxRenderedPoints, vp),
+            points: _clipToViewport(s.points, vp, downsample,
+                widget.maxRenderedPoints),
             plotType: s.plotType,
           ),
       ];
@@ -666,6 +678,91 @@ List<Offset> _decimate(List<Offset> points, int maxPoints) {
   }
 
   return result;
+}
+
+/// Clips [points] to the x-range of [viewport] (plus a 10 % buffer on each
+/// side), then reduces the visible subset using [downsample].
+///
+/// This is the building block for the viewport-aware decimation path.  By
+/// accepting a [downsample] callback it supports both min/max bucketing and
+/// LTTB — whichever algorithm is currently selected on the chart.
+///
+/// Returns an empty list when [maxPoints] ≤ 0 or no points fall within the
+/// (buffered) viewport window.
+///
+/// **Performance:** when [points] appear x-sorted (non-decreasing dx), binary
+/// search is used to find the visible slice in O(log N) instead of O(N),
+/// which is critical for 1M+ point datasets.
+List<Offset> _clipToViewport(
+  List<Offset> points,
+  ChartViewport viewport,
+  List<Offset> Function(List<Offset>, int) downsample,
+  int maxPoints,
+) {
+  if (maxPoints <= 0) return const [];
+
+  // Add a 10 % buffer around the viewport so data near the edges is included.
+  final xBuffer = viewport.xRange * 0.1;
+  final xMin = viewport.xMin - xBuffer;
+  final xMax = viewport.xMax + xBuffer;
+
+  if (points.isEmpty) return const [];
+
+  // Probe up to the first 1 024 points to determine whether the data is
+  // x-sorted.  This is O(1) for practical purposes even on very large lists.
+  var probablySorted = true;
+  final probeCount = math.min(points.length, 1024);
+  for (var i = 1; i < probeCount; i++) {
+    if (points[i - 1].dx > points[i].dx) {
+      probablySorted = false;
+      break;
+    }
+  }
+
+  final List<Offset> visible;
+  if (probablySorted) {
+    int lowerBound(double target) {
+      var lo = 0;
+      var hi = points.length;
+      while (lo < hi) {
+        final mid = (lo + hi) ~/ 2;
+        if (points[mid].dx < target) {
+          lo = mid + 1;
+        } else {
+          hi = mid;
+        }
+      }
+      return lo;
+    }
+
+    int upperBound(double target) {
+      var lo = 0;
+      var hi = points.length;
+      while (lo < hi) {
+        final mid = (lo + hi) ~/ 2;
+        if (points[mid].dx <= target) {
+          lo = mid + 1;
+        } else {
+          hi = mid;
+        }
+      }
+      return lo; // exclusive end index
+    }
+
+    final start = lowerBound(xMin);
+    final end = upperBound(xMax);
+    if (start >= end) return const [];
+    visible = points.sublist(start, end);
+  } else {
+    // Fallback for unsorted data: linear scan.
+    visible = [
+      for (final p in points)
+        if (p.dx >= xMin && p.dx <= xMax) p,
+    ];
+  }
+
+  if (visible.isEmpty) return const [];
+  return downsample(visible, maxPoints);
 }
 
 /// Clips [points] to the x-range of [viewport] (plus a 10 % buffer on each
