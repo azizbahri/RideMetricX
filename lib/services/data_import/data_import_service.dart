@@ -1,5 +1,4 @@
 import '../../models/imu_sample.dart';
-import '../../models/processed_sample.dart';
 import '../../models/quality_score.dart';
 import '../../models/ride_session.dart';
 import '../../models/session_metadata.dart';
@@ -237,8 +236,12 @@ class DataImportService {
                   rearSuccess.report.metrics.effectiveSampleRateHz > 0
                       ? rearSuccess.report.metrics.effectiveSampleRateHz
                       : 200.0,
-              syncOffsetMs:
-                  syncResult != null ? -(syncResult.offsetMs) : 0,
+              // SyncResult.offsetMs = ms that front started AFTER rear.
+              // For rear metadata the offset must be negated: a positive front
+              // offset means rear started BEFORE front, so from rear's
+              // perspective it needs to wait +offsetMs before the front data
+              // becomes valid.
+              syncOffsetMs: syncResult != null ? -(syncResult.offsetMs) : 0,
               pairedSessionId: frontSuccess != null ? id : null,
             )
           : null;
@@ -290,9 +293,9 @@ class DataImportService {
 
   /// Runs [ImportService.importFile] and returns the [ImportSuccess] result.
   ///
-  /// Remaps record-level [ImportError] messages to [CorruptedDataException]
-  /// so callers see a domain exception rather than a generic message.
-  /// Structural format errors are re-raised as [FileFormatException].
+  /// Maps all [ImportError] events to [CorruptedDataException] so that the
+  /// outer `importSession` catch block can surface them as [SessionImportError]
+  /// with the original diagnostic message preserved.
   Future<ImportSuccess> _parseFile(
     FileSelection file,
     SensorPosition position,
@@ -302,12 +305,11 @@ class DataImportService {
       if (state is ImportSuccess) {
         result = state;
       } else if (state is ImportError) {
-        // Row/Field errors indicate corrupt payload data.
-        if (state.message.contains('Row') ||
-            state.message.contains('Field')) {
-          throw CorruptedDataException(state.message, fileName: file.fileName);
-        }
-        throw FileFormatException(state.message);
+        // Map all import failures to CorruptedDataException so callers see a
+        // consistent domain exception.  The original message (which already
+        // describes whether the problem is a format issue, missing field, etc.)
+        // is preserved for diagnostics.
+        throw CorruptedDataException(state.message, fileName: file.fileName);
       }
     }
     if (result == null) {

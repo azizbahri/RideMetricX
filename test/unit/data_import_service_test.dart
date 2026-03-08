@@ -299,10 +299,8 @@ void main() {
         rear: _csv('rear.csv'),
         sessionId: 'prog4',
       );
-      final stages = events
-          .whereType<SessionImportProgress>()
-          .map((e) => e.stage)
-          .toSet();
+      final stages =
+          events.whereType<SessionImportProgress>().map((e) => e.stage).toSet();
       expect(stages, containsAll(ImportStage.values));
     });
 
@@ -346,7 +344,8 @@ void main() {
       await _collect(svc, rear: _csv('r.csv'), sessionId: 'list-b');
       final sessions = svc.listImportedSessions();
       expect(sessions, hasLength(2));
-      expect(sessions.map((s) => s.sessionId), containsAll(['list-a', 'list-b']));
+      expect(
+          sessions.map((s) => s.sessionId), containsAll(['list-a', 'list-b']));
     });
 
     test('clearImportedSession removes the session', () async {
@@ -408,7 +407,8 @@ void main() {
       final svc = DataImportService();
       await _collect(svc, front: _csv('f.csv'), sessionId: 'parity-4');
       final map = svc.getImportedSession('parity-4')!.toMap();
-      expect(() => DateTime.parse(map['imported_at'] as String), returnsNormally);
+      expect(
+          () => DateTime.parse(map['imported_at'] as String), returnsNormally);
     });
 
     test('toMap round-trip preserves session_id', () async {
