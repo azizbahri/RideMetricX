@@ -59,10 +59,10 @@ void main() {
       // Mutate the state so reset has a visible effect.
       ctrl.rotate(1.0, 0.5);
       ctrl.pan(20.0, 10.0);
-      final initial = CameraState.defaults;
+      const initial = CameraState();
 
       await tester.tap(find.byKey(_childKey));
-      await tester.pump(kDoubleTapMinTime + const Duration(milliseconds: 1));
+      await tester.pump(const Duration(milliseconds: 50));
       await tester.tap(find.byKey(_childKey));
       await tester.pumpAndSettle();
 

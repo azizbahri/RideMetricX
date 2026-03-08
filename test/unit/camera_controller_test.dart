@@ -15,7 +15,6 @@
 
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart' show Offset;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:ride_metric_x/rendering/camera_state.dart';
