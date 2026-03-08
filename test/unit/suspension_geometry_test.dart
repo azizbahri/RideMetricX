@@ -310,7 +310,6 @@ void main() {
     test('velocity and displacement transforms use the same ratio', () {
       const wheelDisp = 60.0;
       const wheelVel = 0.5;
-      final ratio = SuspensionGeometry.linkageRatioAt(cfg, wheelDisp);
       final shockVel =
           SuspensionGeometry.wheelToShockVelocity(cfg, wheelVel, wheelDisp);
       final shockDisp =
