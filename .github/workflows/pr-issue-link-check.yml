@@ -11,6 +11,22 @@ jobs:
   require-linked-issue:
     runs-on: ubuntu-latest
     steps:
+      - name: Validate PR title contains issue key token
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = (context.payload.pull_request.title || '');
+            const re = /\[ISSUE-[A-Za-z0-9_-]+\]/;
+
+            if (!re.test(title)) {
+              core.setFailed(
+                'PR title must include an issue token like "[ISSUE-XYZ]" (example: "[ISSUE-DI-7] Add parser validation").'
+              );
+              return;
+            }
+
+            core.info('PR title includes a valid issue token.');
+
       - name: Validate PR body contains closing keyword
         uses: actions/github-script@v7
         with:
