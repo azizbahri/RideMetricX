@@ -153,8 +153,9 @@ void main() {
       await tester.tap(find.text('A'));
       await tester.pumpAndSettle();
 
-      // Tab A's chart should be visible again.
-      expect(find.byType(TelemetryChart), findsOneWidget);
+      // Tab A's chart must be in the tree.  Use the per-tab stable key to
+      // avoid ambiguity if AutomaticKeepAliveClientMixin keeps tab B alive.
+      expect(find.byKey(const ValueKey('chart_A')), findsOneWidget);
     });
   });
 
@@ -169,9 +170,11 @@ void main() {
       await _pumpAnalysis(tester, tabs: [tab1, tab2]);
 
       // Capture the state instance of the chart in tab1.
-      final stateBeforeSwitch = tester.state<TelemetryChartState>(
-        find.byType(TelemetryChart),
-      );
+      // Use the stable per-tab key to avoid ambiguity when
+      // AutomaticKeepAliveClientMixin keeps multiple charts in the tree.
+      final tab1ChartFinder = find.byKey(const ValueKey('chart_Tab1'));
+      final stateBeforeSwitch =
+          tester.state<TelemetryChartState>(tab1ChartFinder);
 
       // Switch to tab2.
       await tester.tap(find.text('Tab2'));
@@ -182,9 +185,8 @@ void main() {
       await tester.pumpAndSettle();
 
       // The state instance must be the same object (kept alive, not recreated).
-      final stateAfterSwitch = tester.state<TelemetryChartState>(
-        find.byType(TelemetryChart),
-      );
+      final stateAfterSwitch =
+          tester.state<TelemetryChartState>(tab1ChartFinder);
       expect(identical(stateBeforeSwitch, stateAfterSwitch), isTrue);
     });
 

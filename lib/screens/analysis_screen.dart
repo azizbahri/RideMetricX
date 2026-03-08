@@ -104,6 +104,9 @@ class _ChartTabPage extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(8),
       child: TelemetryChart(
+        // Stable key per tab title so tests can target specific charts when
+        // AutomaticKeepAliveClientMixin keeps multiple tabs alive simultaneously.
+        key: ValueKey('chart_${tab.title}'),
         series: tab.series,
         xLabel: tab.xLabel,
         yLabel: tab.yLabel,
