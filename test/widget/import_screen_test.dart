@@ -217,7 +217,7 @@ void main() {
     testWidgets('cancelled picker does not update state', (tester) async {
       await tester.pumpWidget(
         _wrap(
-          ImportScreen(onPickFrontFile: _cancelled),
+          const ImportScreen(onPickFrontFile: _cancelled),
         ),
       );
 

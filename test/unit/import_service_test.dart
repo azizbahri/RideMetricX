@@ -78,17 +78,17 @@ void main() {
 
   group('ImportState', () {
     test('ImportIdle is an ImportState', () {
-      expect(ImportIdle(), isA<ImportState>());
+      expect(const ImportIdle(), isA<ImportState>());
     });
 
     test('ImportInProgress carries progress value', () {
-      final s = ImportInProgress(0.5);
+      const s = ImportInProgress(0.5);
       expect(s, isA<ImportState>());
       expect(s.progress, 0.5);
     });
 
     test('ImportError carries message', () {
-      final s = ImportError('oops');
+      const s = ImportError('oops');
       expect(s, isA<ImportState>());
       expect(s.message, 'oops');
     });
