@@ -424,7 +424,7 @@ void main() {
     test('constant linkage with ratio <= 0 is rejected', () {
       final errors = ConfigValidator.validate(
         withLinkage(
-          LinkageConfig.constant(ratio: 0.0, wheelTravelMaxMm: 200.0),
+          const LinkageConfig.constant(ratio: 0.0, wheelTravelMaxMm: 200.0),
         ),
       );
       expect(
@@ -436,7 +436,7 @@ void main() {
     test('constant linkage with travel <= 0 is rejected', () {
       final errors = ConfigValidator.validate(
         withLinkage(
-          LinkageConfig.constant(ratio: 2.8, wheelTravelMaxMm: 0.0),
+          const LinkageConfig.constant(ratio: 2.8, wheelTravelMaxMm: 0.0),
         ),
       );
       expect(
