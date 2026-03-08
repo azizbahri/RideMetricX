@@ -628,9 +628,9 @@ void main() {
     });
 
     test('ValidationException with errors includes error count', () {
-      final e = ValidationException(
+      const e = ValidationException(
         'failed',
-        errors: [const ValidationError(message: 'err1')],
+        errors: [ValidationError(message: 'err1')],
       );
       expect(e.toString(), contains('1 error(s)'));
     });
