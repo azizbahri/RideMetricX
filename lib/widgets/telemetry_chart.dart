@@ -56,15 +56,46 @@ class ChartViewport {
   String toString() => 'ChartViewport(x: [$xMin, $xMax], y: [$yMin, $yMax])';
 }
 
+// ── Downsampling ──────────────────────────────────────────────────────────────
+
+/// Selects the downsampling algorithm applied before rendering.
+///
+/// Both algorithms operate on [List<Offset>] where [Offset.dx] is the x value
+/// (e.g. elapsed time in ms) and [Offset.dy] is the y value.
+enum DownsampleMethod {
+  /// Min/max envelope bucketing.
+  ///
+  /// Divides the series into equal-width buckets and retains the point with
+  /// the minimum *and* maximum y-value from each bucket.  Fast and suitable
+  /// for detecting peaks, but may introduce slight visual jitter on smooth
+  /// signals.
+  minMax,
+
+  /// Largest Triangle Three Buckets (LTTB).
+  ///
+  /// For each bucket, selects the single point whose retention would maximise
+  /// the triangle area formed with the previously selected point and the
+  /// average of the next bucket.  This maximises preserved visual information,
+  /// producing a faithful representation of the original signal shape and
+  /// making it the preferred method for telemetry replay (FR-VZ-006,
+  /// NFR-VZ-001).
+  lttb,
+}
+
 // ── TelemetryChart ────────────────────────────────────────────────────────────
 
-/// A telemetry chart with zoom/pan/select interactions (FR-UI-006).
+/// A telemetry chart with zoom/pan/select interactions (FR-VZ-006).
 ///
 /// Renders one or more [TelemetrySeries] over a shared x-axis. Zoom and pan
 /// are handled via scale/drag gestures. Tapping the canvas places a crosshair
 /// at the selected **data-space** position, so it stays anchored to the same
 /// data point after any subsequent pan or zoom. An export button calls
 /// [onExport] when set.
+///
+/// Large datasets are automatically downsampled to [maxRenderedPoints] per
+/// series using the algorithm chosen by [downsampleMethod] (default:
+/// [DownsampleMethod.lttb]) before every paint, keeping each frame below the
+/// 16 ms budget required by NFR-VZ-001.
 ///
 /// The chart state (viewport, crosshair) is kept alive across [TabBarView]
 /// transitions via [AutomaticKeepAliveClientMixin].
@@ -86,6 +117,7 @@ class TelemetryChart extends StatefulWidget {
     this.yLabel = 'Value',
     this.onExport,
     this.maxRenderedPoints = 2000,
+    this.downsampleMethod = DownsampleMethod.lttb,
   });
 
   /// The data series to plot. May be empty (renders empty axes).
@@ -101,9 +133,13 @@ class TelemetryChart extends StatefulWidget {
   /// disabled.
   final VoidCallback? onExport;
 
-  /// Maximum number of points rendered per series after decimation.
-  /// Limits rendering cost for large datasets (NFR-UI-005).
+  /// Maximum number of points rendered per series after downsampling.
+  /// Limits rendering cost for large datasets (NFR-VZ-001).
   final int maxRenderedPoints;
+
+  /// Algorithm used to reduce each series to [maxRenderedPoints] before
+  /// painting.  Defaults to [DownsampleMethod.lttb].
+  final DownsampleMethod downsampleMethod;
 
   /// Reduces [points] to at most [maxPoints] while preserving signal shape by
   /// retaining the min/max envelope within each bucket.
@@ -113,6 +149,21 @@ class TelemetryChart extends StatefulWidget {
   /// directly without pumping a widget.
   static List<Offset> decimate(List<Offset> points, int maxPoints) {
     return _decimate(points, maxPoints);
+  }
+
+  /// Reduces [points] to at most [maxPoints] using the **Largest Triangle
+  /// Three Buckets** (LTTB) algorithm.
+  ///
+  /// LTTB selects, for each bucket, the single point that would create the
+  /// largest triangle with its neighbours, thereby maximally preserving the
+  /// perceived visual shape of the signal.  The first and last points are
+  /// always retained.
+  ///
+  /// Returns an empty list when [maxPoints] ≤ 0.
+  /// Exposed as a static method so unit tests can verify the algorithm
+  /// directly without pumping a widget.
+  static List<Offset> lttb(List<Offset> points, int maxPoints) {
+    return _lttb(points, maxPoints);
   }
 
   @override
@@ -143,10 +194,11 @@ class TelemetryChartState extends State<TelemetryChart>
   // gesture handlers.  Avoids a RenderBox lookup on the wrong ancestor.
   Size _canvasSize = Size.zero;
 
-  // Decimation cache: avoid rebuilding the decimated list on every render.
+  // Downsampling cache: avoid rebuilding the downsampled list on every render.
   List<TelemetrySeries>? _decimatedCache;
   List<TelemetrySeries>? _cachedOriginalSeries;
   int? _cachedMaxRenderedPoints;
+  DownsampleMethod? _cachedDownsampleMethod;
 
   // ── Public API for tests ───────────────────────────────────────────────────
 
@@ -207,23 +259,30 @@ class TelemetryChartState extends State<TelemetryChart>
     );
   }
 
-  // ── Decimation cache ───────────────────────────────────────────────────────
+  // ── Downsampling cache ────────────────────────────────────────────────────
 
-  /// Returns the decimated series list, reusing the cached result when the
-  /// source series and [maxRenderedPoints] have not changed.
+  /// Returns the downsampled series list, reusing the cached result when the
+  /// source series, [maxRenderedPoints], and [downsampleMethod] have not changed.
   List<TelemetrySeries> _getDecimated() {
     if (identical(_cachedOriginalSeries, widget.series) &&
-        _cachedMaxRenderedPoints == widget.maxRenderedPoints) {
+        _cachedMaxRenderedPoints == widget.maxRenderedPoints &&
+        _cachedDownsampleMethod == widget.downsampleMethod) {
       return _decimatedCache!;
     }
     _cachedOriginalSeries = widget.series;
     _cachedMaxRenderedPoints = widget.maxRenderedPoints;
+    _cachedDownsampleMethod = widget.downsampleMethod;
+
+    final downsample = widget.downsampleMethod == DownsampleMethod.lttb
+        ? _lttb
+        : _decimate;
+
     _decimatedCache = [
       for (final s in widget.series)
         TelemetrySeries(
           label: s.label,
           color: s.color,
-          points: _decimate(s.points, widget.maxRenderedPoints),
+          points: downsample(s.points, widget.maxRenderedPoints),
           plotType: s.plotType,
         ),
     ];
@@ -473,6 +532,93 @@ List<Offset> _decimate(List<Offset> points, int maxPoints) {
     }
   }
 
+  return result;
+}
+
+// ── LTTB ──────────────────────────────────────────────────────────────────────
+
+/// Reduces [points] to at most [maxPoints] using the **Largest Triangle Three
+/// Buckets** (LTTB) algorithm (Sveinn Steinarsson, 2013).
+///
+/// The algorithm:
+///  1. Always retains the first and last data point.
+///  2. Divides the interior points into `maxPoints − 2` equal-width buckets.
+///  3. For each bucket selects the point that maximises the area of the
+///     triangle formed by: the previously selected point, the candidate, and
+///     the average of the *next* bucket (or the final point for the last
+///     bucket).
+///
+/// This approach preserves perceived signal shape better than uniform
+/// decimation or min/max bucketing, satisfying the visual-fidelity goal of
+/// FR-VZ-006 and the ≤16 ms frame budget of NFR-VZ-001.
+///
+/// Returns an empty list when [maxPoints] ≤ 0.
+List<Offset> _lttb(List<Offset> points, int maxPoints) {
+  if (maxPoints <= 0) return const [];
+  if (points.length <= maxPoints) return points;
+  if (maxPoints == 1) return [points.first];
+  if (maxPoints == 2) return [points.first, points.last];
+
+  final result = <Offset>[]..add(points.first);
+
+  // Number of buckets for the interior points (first and last are fixed).
+  final bucketCount = maxPoints - 2;
+  final bucketSize = (points.length - 2) / bucketCount;
+
+  int lastSelected = 0; // index of the most recently selected point
+
+  for (int i = 0; i < bucketCount; i++) {
+    // Current bucket: slice of interior indices [bucketStart, bucketEnd).
+    final bucketStart = (i * bucketSize + 1).floor();
+    final bucketEnd =
+        math.min(((i + 1) * bucketSize + 1).floor(), points.length - 1);
+
+    // Average of the *next* bucket (or the final point for the last bucket).
+    double nextAvgX, nextAvgY;
+    if (i == bucketCount - 1) {
+      nextAvgX = points.last.dx;
+      nextAvgY = points.last.dy;
+    } else {
+      final nextStart = bucketEnd;
+      final nextEnd =
+          math.min(((i + 2) * bucketSize + 1).floor(), points.length - 1);
+      final count = nextEnd - nextStart;
+      if (count <= 0) {
+        nextAvgX = points.last.dx;
+        nextAvgY = points.last.dy;
+      } else {
+        double sumX = 0, sumY = 0;
+        for (int j = nextStart; j < nextEnd; j++) {
+          sumX += points[j].dx;
+          sumY += points[j].dy;
+        }
+        nextAvgX = sumX / count;
+        nextAvgY = sumY / count;
+      }
+    }
+
+    // Select the point in the current bucket with the maximum triangle area.
+    final prev = points[lastSelected];
+    double maxArea = -1;
+    int maxIdx = bucketStart;
+
+    for (int j = bucketStart; j < bucketEnd; j++) {
+      final p = points[j];
+      // Twice the signed triangle area; absolute value = triangle area × 2.
+      final area = ((prev.dx - nextAvgX) * (p.dy - prev.dy) -
+              (prev.dx - p.dx) * (nextAvgY - prev.dy))
+          .abs();
+      if (area > maxArea) {
+        maxArea = area;
+        maxIdx = j;
+      }
+    }
+
+    result.add(points[maxIdx]);
+    lastSelected = maxIdx;
+  }
+
+  result.add(points.last);
   return result;
 }
 
