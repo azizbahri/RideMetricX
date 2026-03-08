@@ -113,7 +113,7 @@ void main() {
 
     test('frontAligned and rearAligned are unmodifiable via service output',
         () {
-      final service = const SynchronizationService();
+      const service = SynchronizationService();
       final result = service.alignManual(front, rear, 0);
       expect(
         () => result.frontAligned.add(_sample(timestampMs: 99)),
