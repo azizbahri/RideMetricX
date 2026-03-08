@@ -4,6 +4,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import 'models/session_metadata.dart';
+import 'models/simulation_result.dart';
+import 'models/telemetry_series.dart';
 import 'repositories/session_repository.dart';
 import 'screens/analysis_screen.dart';
 import 'screens/comparison_screen.dart';
@@ -87,6 +89,9 @@ class _AppShellState extends State<AppShell> {
   int _selectedIndex = 0;
   final SessionRepository _sessionRepository = SessionRepository();
 
+  /// Latest simulation result produced by the Tuning screen.
+  SimulationResult? _simulationResult;
+
   /// Picks a file using the platform file picker and returns a [FileSelection]
   /// containing the file name and decoded text content, or `null` if the user
   /// cancelled.
@@ -129,9 +134,9 @@ class _AppShellState extends State<AppShell> {
           onImportCompleted: _onImportCompleted,
         ),
         SessionsScreen(repository: _sessionRepository),
-        const AnalysisScreen(),
+        AnalysisScreen(tabs: _buildSimulationTabs()),
         const VisualizationScreen(),
-        const TuningScreen(),
+        TuningScreen(onSimulationResult: _onSimulationResult),
         const ComparisonScreen(),
         const SettingsScreen(),
       ];
@@ -140,6 +145,73 @@ class _AppShellState extends State<AppShell> {
     for (final session in sessions) {
       _sessionRepository.add(session);
     }
+  }
+
+  /// Stores the latest [SimulationResult] and triggers a rebuild so the
+  /// Analysis screen receives the new simulation chart tabs.
+  void _onSimulationResult(SimulationResult result) {
+    setState(() => _simulationResult = result);
+  }
+
+  /// Converts the latest [SimulationResult] into [ChartTab]s for the
+  /// [AnalysisScreen].  Returns `null` when no simulation has been run yet
+  /// (the Analysis screen will show its built-in demo data instead).
+  List<ChartTab>? _buildSimulationTabs() {
+    final result = _simulationResult;
+    if (result == null) return null;
+
+    final frontDisp = result.frontSamples
+        .map((s) => Offset(s.timeMs, s.displacementMm))
+        .toList(growable: false);
+    final rearDisp = result.rearSamples
+        .map((s) => Offset(s.timeMs, s.displacementMm))
+        .toList(growable: false);
+
+    final frontForce = result.frontSamples
+        .map((s) => Offset(s.timeMs, s.springForceN + s.dampingForceN))
+        .toList(growable: false);
+    final rearForce = result.rearSamples
+        .map((s) => Offset(s.timeMs, s.springForceN + s.dampingForceN))
+        .toList(growable: false);
+
+    return [
+      ChartTab(
+        id: 'sim_displacement',
+        title: 'Displacement',
+        xLabel: 'Time (ms)',
+        yLabel: 'Travel (mm)',
+        series: [
+          TelemetrySeries(
+            label: 'Front',
+            color: const Color(0xFF2196F3),
+            points: frontDisp,
+          ),
+          TelemetrySeries(
+            label: 'Rear',
+            color: const Color(0xFFFF9800),
+            points: rearDisp,
+          ),
+        ],
+      ),
+      ChartTab(
+        id: 'sim_force',
+        title: 'Suspension Force',
+        xLabel: 'Time (ms)',
+        yLabel: 'Force (N)',
+        series: [
+          TelemetrySeries(
+            label: 'Front',
+            color: const Color(0xFF4CAF50),
+            points: frontForce,
+          ),
+          TelemetrySeries(
+            label: 'Rear',
+            color: const Color(0xFFE91E63),
+            points: rearForce,
+          ),
+        ],
+      ),
+    ];
   }
 
   void _onDestinationSelected(int index) {

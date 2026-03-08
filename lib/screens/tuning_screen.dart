@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
 
+import '../models/simulation_result.dart';
 import '../models/suspension_parameters.dart';
+import '../services/simulation/simulation_engine.dart';
 import '../services/simulation/simulation_trigger.dart';
 
 /// Screen that exposes front/rear suspension parameter controls, preset
 /// selection, and a debounced simulation run trigger (FR-UI-005, NFR-UI-002).
 class TuningScreen extends StatefulWidget {
-  const TuningScreen({super.key, this.simulationRunner, this.debounceDuration});
+  const TuningScreen({
+    super.key,
+    this.simulationRunner,
+    this.debounceDuration,
+    this.onSimulationResult,
+  });
 
   /// Optional override for the simulation runner.  Receives the current
   /// [TuningParameters] and returns a [Future] that resolves when the run
@@ -16,6 +23,10 @@ class TuningScreen extends StatefulWidget {
   /// Override for the debounce delay.  Defaults to 500 ms in production;
   /// inject a shorter value in tests to avoid waiting.
   final Duration? debounceDuration;
+
+  /// Optional callback invoked with the [SimulationResult] produced by the
+  /// built-in engine runner.  Not called when [simulationRunner] is overridden.
+  final void Function(SimulationResult result)? onSimulationResult;
 
   // ── Semantic keys for tests ────────────────────────────────────────────────
   static const Key presetDropdownKey = Key('tuning_preset_dropdown');
@@ -82,10 +93,12 @@ class _TuningScreenState extends State<TuningScreen> {
     await runner(_params);
   }
 
-  /// Placeholder runner used when no [simulationRunner] is injected.
+  /// Default runner: delegates to [SimulationEngine] and forwards the result
+  /// to [TuningScreen.onSimulationResult] if provided.
   Future<void> _defaultRunner(TuningParameters params) async {
-    // Real simulation engine will be wired in a future issue.
-    await Future.delayed(const Duration(milliseconds: 100));
+    const engine = SimulationEngine();
+    final result = await engine.simulate(tuning: params);
+    widget.onSimulationResult?.call(result);
   }
 
   void _applyPreset(String preset) {
