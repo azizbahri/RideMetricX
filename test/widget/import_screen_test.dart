@@ -364,6 +364,135 @@ void main() {
 
       expect(find.byType(LinearProgressIndicator), findsNothing);
     });
+
+    testWidgets('Go to Sessions button shown after successful import',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          ImportScreen(
+            onPickFrontFile: () => _pick(_frontSelection),
+          ),
+        ),
+      );
+
+      await tester.tap(
+        find.descendant(
+          of: find.widgetWithText(Card, 'Front Sensor'),
+          matching: find.text('Select'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('import_button')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('go_to_sessions_button')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('Go to Sessions button invokes onNavigateToSessions callback',
+        (tester) async {
+      var navigateCalled = false;
+
+      await tester.pumpWidget(
+        _wrap(
+          ImportScreen(
+            onPickFrontFile: () => _pick(_frontSelection),
+            onNavigateToSessions: () => navigateCalled = true,
+          ),
+        ),
+      );
+
+      await tester.tap(
+        find.descendant(
+          of: find.widgetWithText(Card, 'Front Sensor'),
+          matching: find.text('Select'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('import_button')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('go_to_sessions_button')));
+      await tester.pump();
+
+      expect(navigateCalled, isTrue);
+    });
+
+    testWidgets('Go to Sessions button not shown before import completes',
+        (tester) async {
+      final ctrl = StreamController<ImportState>();
+      final svc = _FakeImportService(ctrl);
+
+      await tester.pumpWidget(
+        _wrap(
+          ImportScreen(
+            onPickFrontFile: () => _pick(_frontSelection),
+            service: svc,
+          ),
+        ),
+      );
+
+      await tester.tap(
+        find.descendant(
+          of: find.widgetWithText(Card, 'Front Sensor'),
+          matching: find.text('Select'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('import_button')));
+      await tester.pump();
+
+      ctrl.add(const ImportInProgress(0.5));
+      await tester.pump();
+
+      expect(
+        find.byKey(const Key('go_to_sessions_button')),
+        findsNothing,
+      );
+
+      await ctrl.close();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('Go to Sessions button not shown when import errors',
+        (tester) async {
+      final ctrl = StreamController<ImportState>();
+      final svc = _FakeImportService(ctrl);
+
+      await tester.pumpWidget(
+        _wrap(
+          ImportScreen(
+            onPickFrontFile: () => _pick(_frontSelection),
+            service: svc,
+          ),
+        ),
+      );
+
+      await tester.tap(
+        find.descendant(
+          of: find.widgetWithText(Card, 'Front Sensor'),
+          matching: find.text('Select'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('import_button')));
+      await tester.pump();
+
+      ctrl.add(const ImportError('File is corrupt'));
+      await ctrl.close();
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('go_to_sessions_button')),
+        findsNothing,
+      );
+    });
   });
 
   // ── Error path ───────────────────────────────────────────────────────────

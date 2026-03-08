@@ -17,12 +17,16 @@ typedef PickFileCallback = Future<FileSelection?> Function();
 /// the file-picking mechanism; when omitted the corresponding "Select" button
 /// is disabled.  Pass custom callbacks in tests to simulate file selection
 /// without relying on platform-specific file-picker plugins.
+///
+/// [onNavigateToSessions] is an optional callback invoked when the user taps
+/// the "Go to Sessions" button that appears after a successful import.
 class ImportScreen extends StatefulWidget {
   const ImportScreen({
     super.key,
     this.onPickFrontFile,
     this.onPickRearFile,
     this.service,
+    this.onNavigateToSessions,
   });
 
   /// Invoked when the user taps "Select" for the front sensor file.
@@ -34,6 +38,10 @@ class ImportScreen extends StatefulWidget {
   /// Import service instance; defaults to [ImportService()] when omitted.
   /// Inject a custom instance in tests to control pipeline behaviour.
   final ImportService? service;
+
+  /// Called when the user taps "Go to Sessions" after a successful import.
+  /// When omitted the button is still shown but performs no action.
+  final VoidCallback? onNavigateToSessions;
 
   @override
   State<ImportScreen> createState() => _ImportScreenState();
@@ -248,6 +256,19 @@ class _ImportScreenState extends State<ImportScreen> {
           if (_rearResult != null) ...[
             const SizedBox(height: 16),
             _ValidationSummaryCard(result: _rearResult!),
+          ],
+
+          // ── Post-import navigation ────────────────────────────────────────
+          if (!_importing &&
+              (_frontResult != null || _rearResult != null) &&
+              _errorMessage == null) ...[
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              key: const Key('go_to_sessions_button'),
+              onPressed: widget.onNavigateToSessions,
+              icon: const Icon(Icons.history),
+              label: const Text('Go to Sessions'),
+            ),
           ],
         ],
       ),
