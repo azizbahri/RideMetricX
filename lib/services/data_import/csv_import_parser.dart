@@ -60,7 +60,8 @@ class CsvImportParser extends DataParser {
           'Row $lineNumber has ${fields.length} field(s) but header has '
           '${headers.length}.',
           line: lineNumber,
-          context: lines[i].length > 60 ? '${lines[i].substring(0, 60)}…' : lines[i],
+          context:
+              lines[i].length > 60 ? '${lines[i].substring(0, 60)}…' : lines[i],
         );
       }
 

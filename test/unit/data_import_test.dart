@@ -445,13 +445,15 @@ timestamp_ms,value
     test('decompresses gzip-encoded UTF-8 content', () {
       const original = 'timestamp_ms,value\n0,1.0\n5,2.0\n';
       final compressed = const GZipEncoder().encode(utf8.encode(original));
-      final result = Decompressor.decompress(compressed, CompressionFormat.gzip);
+      final result =
+          Decompressor.decompress(compressed, CompressionFormat.gzip);
       expect(result, original);
     });
 
     test('throws FileFormatException on invalid gzip bytes', () {
       expect(
-        () => Decompressor.decompress([0x00, 0x01, 0x02], CompressionFormat.gzip),
+        () =>
+            Decompressor.decompress([0x00, 0x01, 0x02], CompressionFormat.gzip),
         throwsA(isA<FileFormatException>()),
       );
     });
@@ -461,7 +463,8 @@ timestamp_ms,value
     test('decompresses a single-file ZIP archive', () {
       const original = 'timestamp_ms,value\n0,1.0\n5,2.0\n';
       final archive = Archive()
-        ..addFile(ArchiveFile('data.csv', original.length, utf8.encode(original)));
+        ..addFile(
+            ArchiveFile('data.csv', original.length, utf8.encode(original)));
       final zipBytes = ZipEncoder().encode(archive);
       final result = Decompressor.decompress(zipBytes, CompressionFormat.zip);
       expect(result, original);
@@ -489,7 +492,8 @@ timestamp_ms,value
 
     test('throws FileFormatException on invalid zip bytes', () {
       expect(
-        () => Decompressor.decompress([0x00, 0x01, 0x02], CompressionFormat.zip),
+        () =>
+            Decompressor.decompress([0x00, 0x01, 0x02], CompressionFormat.zip),
         throwsA(isA<FileFormatException>()),
       );
     });
