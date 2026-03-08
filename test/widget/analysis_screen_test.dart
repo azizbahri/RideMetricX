@@ -212,8 +212,10 @@ void main() {
 
       await _pumpAnalysis(tester, tabs: [tab1, tab2]);
 
-      // Drag the chart canvas to modify the viewport.
-      await tester.drag(_canvasFinder('Tab1'), const Offset(40, 0));
+      // Drag the chart canvas vertically to modify the viewport.
+      // A horizontal drag would be intercepted by the TabBarView's PageView
+      // gesture recognizer; vertical drags are unambiguous.
+      await tester.drag(_canvasFinder('Tab1'), const Offset(0, 40));
       await tester.pump();
 
       // Verify the viewport was modified (Reset View button appears).
