@@ -267,11 +267,11 @@ void main() {
 
       // The button should now say "Running…" and be disabled.
       expect(find.text('Running…'), findsOneWidget);
+      // FilledButton.icon() creates a private _FilledButtonWithIcon subtype
+      // whose runtimeType != FilledButton, so find.byType(FilledButton) would
+      // return no matches.  Use the stable widget key instead.
       final button = tester.widget<FilledButton>(
-        find.ancestor(
-          of: find.text('Running…'),
-          matching: find.byType(FilledButton),
-        ),
+        find.byKey(TuningScreen.runButtonKey),
       );
       expect(button.onPressed, isNull);
 
