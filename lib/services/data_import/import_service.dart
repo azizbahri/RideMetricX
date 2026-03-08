@@ -1,3 +1,5 @@
+import 'dart:isolate';
+
 import '../../models/imu_sample.dart';
 import '../../models/session_metadata.dart';
 import '../../models/validation_report.dart';
@@ -9,6 +11,33 @@ import 'file_format_exception.dart';
 import 'json_import_parser.dart';
 import 'jsonl_parser.dart';
 import 'validation_service.dart';
+
+// ── Top-level parse function (background-isolate safe) ────────────────────────
+
+/// Parses [content] in the format specified by [args.$1].
+///
+/// This is a **top-level** (non-closure) function so that it can be passed to
+/// [Isolate.run] without capturing any non-sendable objects from the
+/// enclosing scope.  Only the [DataFormat] enum value (sendable) and the raw
+/// text [String] (sendable) are transferred to the worker isolate / Web Worker.
+///
+/// Exceptions thrown by the parser are allowed to propagate naturally;
+/// [FileFormatException] implements [Exception] so it is sendable.
+List<Map<String, dynamic>> _parseInIsolate((DataFormat, String) args) {
+  final (format, content) = args;
+  final DataParser parser;
+  switch (format) {
+    case DataFormat.csv:
+      parser = const CsvImportParser();
+    case DataFormat.json:
+      parser = const JsonImportParser();
+    case DataFormat.jsonl:
+      parser = const JsonlParser();
+    case DataFormat.binary:
+      parser = const BinaryParser();
+  }
+  return parser.parse(content);
+}
 
 /// A file selected by the user for import.
 ///
@@ -88,6 +117,10 @@ class ImportService {
   /// Validation rules applied after parsing.
   final ValidationService validator;
 
+  /// Content-length threshold (in code-unit count) above which parsing is
+  /// offloaded to a background isolate.  Approximately 1 MB of decoded text.
+  static const int _largeFileThreshold = 1024 * 1024;
+
   /// Runs the import pipeline for [selection] and [position].
   ///
   /// Emits [ImportInProgress] events at each pipeline stage, followed by
@@ -104,18 +137,33 @@ class ImportService {
       yield const ImportInProgress(0.2);
 
       // ── 2. Parse (20 → 50 %) ────────────────────────────────────────────
-      final DataParser parser;
-      switch (format) {
-        case DataFormat.csv:
-          parser = const CsvImportParser();
-        case DataFormat.json:
-          parser = const JsonImportParser();
-        case DataFormat.jsonl:
-          parser = const JsonlParser();
-        case DataFormat.binary:
-          parser = const BinaryParser();
+
+      // For large files, offload parsing to a background isolate so the UI
+      // thread stays responsive (on Flutter Web this transparently uses a
+      // Web Worker).  We pass only sendable primitives — (DataFormat, String)
+      // — to the top-level function _parseInIsolate so no non-transferable
+      // objects are captured in the isolate closure.
+      //
+      // Threshold: >1 MB of decoded text content.
+      final List<Map<String, dynamic>> records;
+      if (selection.content.length > _largeFileThreshold) {
+        try {
+          records = await Isolate.run(
+            () => _parseInIsolate((format, selection.content)),
+            debugName: 'import_parse',
+          );
+        } on FileFormatException {
+          rethrow;
+        } catch (e) {
+          // Exceptions that are not directly sendable across the isolate
+          // boundary can surface as RemoteError or similar wrappers.
+          // Re-surface them as FileFormatException so the caller's error
+          // handler fires with a user-readable message.
+          throw FileFormatException(e.toString());
+        }
+      } else {
+        records = _parseInIsolate((format, selection.content));
       }
-      final records = parser.parse(selection.content);
       yield const ImportInProgress(0.5);
 
       // ── 3. Record → ImuSample (50 → 70 %) ───────────────────────────────

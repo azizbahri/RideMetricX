@@ -116,6 +116,7 @@ class _AppShellState extends State<AppShell> {
         ImportScreen(
           onPickFrontFile: _pickFile,
           onPickRearFile: _pickFile,
+          onNavigateToSessions: () => _onDestinationSelected(1),
         ),
         const SessionsScreen(),
         const AnalysisScreen(),

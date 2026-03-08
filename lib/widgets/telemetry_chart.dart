@@ -238,6 +238,15 @@ class TelemetryChartState extends State<TelemetryChart>
   final Debouncer _viewportDecimationDebouncer =
       Debouncer(delay: _kViewportDecimationDelay);
 
+  // Viewport-aware decimation cache: provides higher resolution within the
+  // visible window when the user has zoomed into a small portion of the data.
+  // Updated asynchronously (see [_kViewportDecimationDelay]) via the debouncer
+  // so interactive panning/zooming stays smooth.
+  List<TelemetrySeries>? _viewportDecimatedCache;
+  ChartViewport? _cachedDecimationViewport;
+  final Debouncer _viewportDecimationDebouncer =
+      Debouncer(delay: _kViewportDecimationDelay);
+
   // ── Public API for tests ───────────────────────────────────────────────────
 
   /// The current data-space viewport.
@@ -280,6 +289,21 @@ class TelemetryChartState extends State<TelemetryChart>
       _viewportDecimatedCache = null;
       _cachedDecimationViewport = null;
     }
+    if (oldWidget.maxRenderedPoints != widget.maxRenderedPoints) {
+      // Point budget changed: the viewport-aware cache was built with the old
+      // budget and is now stale.  Cancel any pending debounce and clear the
+      // cache so the global decimation (which also auto-rebuilds) takes over
+      // until the next debounce cycle populates a fresh viewport cache.
+      _viewportDecimationDebouncer.cancel();
+      _viewportDecimatedCache = null;
+      _cachedDecimationViewport = null;
+    }
+  }
+
+  @override
+  void dispose() {
+    _viewportDecimationDebouncer.dispose();
+    super.dispose();
   }
 
   @override
