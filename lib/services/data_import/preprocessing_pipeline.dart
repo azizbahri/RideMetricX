@@ -492,15 +492,7 @@ class _GravityAndIntegrationStage {
 
     // ── Integration (optional) ────────────────────────────────────────────
     if (!integration.enabled) {
-      return List.generate(
-        n,
-        (i) => ProcessedSample(
-          raw: samples[i],
-          accelXLinear: linAccelX[i],
-          accelYLinear: linAccelY[i],
-          accelZLinear: linAccelZ[i],
-        ),
-      );
+      return _buildOutput(n, samples, linAccelX, linAccelY, linAccelZ);
     }
 
     // Compute effective sample rate for the drift-correction high-pass filter.
@@ -554,22 +546,50 @@ class _GravityAndIntegrationStage {
       pz[i] = pz[i - 1] + (vz[i] + vz[i - 1]) / 2.0 * dt;
     }
 
-    return List.generate(
+    return _buildOutput(
       n,
-      (i) => ProcessedSample(
-        raw: samples[i],
-        accelXLinear: linAccelX[i],
-        accelYLinear: linAccelY[i],
-        accelZLinear: linAccelZ[i],
-        velocityX: vx[i],
-        velocityY: vy[i],
-        velocityZ: vz[i],
-        positionX: px[i],
-        positionY: py[i],
-        positionZ: pz[i],
-      ),
+      samples,
+      linAccelX,
+      linAccelY,
+      linAccelZ,
+      vx: vx,
+      vy: vy,
+      vz: vz,
+      px: px,
+      py: py,
+      pz: pz,
     );
   }
+
+  /// Constructs the [ProcessedSample] output list from pre-computed channels.
+  static List<ProcessedSample> _buildOutput(
+    int n,
+    List<ImuSample> samples,
+    List<double> linAccelX,
+    List<double> linAccelY,
+    List<double> linAccelZ, {
+    List<double>? vx,
+    List<double>? vy,
+    List<double>? vz,
+    List<double>? px,
+    List<double>? py,
+    List<double>? pz,
+  }) =>
+      List.generate(
+        n,
+        (i) => ProcessedSample(
+          raw: samples[i],
+          accelXLinear: linAccelX[i],
+          accelYLinear: linAccelY[i],
+          accelZLinear: linAccelZ[i],
+          velocityX: vx?[i],
+          velocityY: vy?[i],
+          velocityZ: vz?[i],
+          positionX: px?[i],
+          positionY: py?[i],
+          positionZ: pz?[i],
+        ),
+      );
 
   /// Creates a [ProcessedSample] with zero linear acceleration (no gravity
   /// removal applied) used for single-sample or disabled-gravity-removal

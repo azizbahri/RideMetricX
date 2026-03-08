@@ -155,7 +155,6 @@ void main() {
 
       expect(r1.length, r2.length);
       for (int i = 0; i < r1.length; i++) {
-        expect(r1[i].accelXLinear, r1[i].accelXLinear);
         expect(r1[i].accelXLinear, r2[i].accelXLinear);
         expect(r1[i].accelYLinear, r2[i].accelYLinear);
         expect(r1[i].accelZLinear, r2[i].accelZLinear);
