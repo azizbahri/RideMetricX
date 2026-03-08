@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import 'models/session_metadata.dart';
+import 'repositories/session_repository.dart';
 import 'screens/analysis_screen.dart';
 import 'screens/comparison_screen.dart';
 import 'screens/import_screen.dart';
@@ -77,6 +79,7 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int _selectedIndex = 0;
+  final SessionRepository _sessionRepository = SessionRepository();
 
   /// Picks a file using the platform file picker and returns a [FileSelection]
   /// containing the file name and decoded text content, or `null` if the user
@@ -117,13 +120,20 @@ class _AppShellState extends State<AppShell> {
           onPickFrontFile: _pickFile,
           onPickRearFile: _pickFile,
           onNavigateToSessions: () => _onDestinationSelected(1),
+          onImportCompleted: _onImportCompleted,
         ),
-        const SessionsScreen(),
+        SessionsScreen(repository: _sessionRepository),
         const AnalysisScreen(),
         const TuningScreen(),
         const ComparisonScreen(),
         const SettingsScreen(),
       ];
+
+  void _onImportCompleted(List<SessionMetadata> sessions) {
+    for (final session in sessions) {
+      _sessionRepository.add(session);
+    }
+  }
 
   void _onDestinationSelected(int index) {
     setState(() => _selectedIndex = index);
