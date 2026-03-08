@@ -9,8 +9,10 @@
 //   - File card "Remove" button clears selection
 //   - During import: progress indicator and Cancel button visible
 //   - After successful import: ValidationSummaryCard rendered
-//   - After import error: error banner rendered
+//   - After successful import: Go to Sessions button shown and callback fired
+//   - After import error: error banner rendered, Go to Sessions button hidden
 //   - Cancel stops import progress display
+//   - Cancel of partially-successful import hides Go to Sessions button
 
 import 'dart:async';
 
@@ -19,6 +21,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:ride_metric_x/main.dart';
 import 'package:ride_metric_x/models/session_metadata.dart';
+import 'package:ride_metric_x/models/validation_metrics.dart';
+import 'package:ride_metric_x/models/validation_report.dart';
 import 'package:ride_metric_x/screens/import_screen.dart';
 import 'package:ride_metric_x/services/data_import/import_service.dart';
 
@@ -87,6 +91,38 @@ class _TwoFileFakeService extends ImportService {
       return const Stream.empty();
     }
     return frontStream;
+  }
+}
+
+/// Fake service where front immediately emits [ImportSuccess] and rear uses
+/// [rearController], allowing tests to drive a partially-completed import.
+class _PartialSuccessFakeService extends ImportService {
+  _PartialSuccessFakeService({required this.rearController});
+
+  final StreamController<ImportState> rearController;
+
+  @override
+  Stream<ImportState> importFile(
+    FileSelection selection,
+    SensorPosition position,
+  ) {
+    if (position == SensorPosition.front) {
+      return Stream.value(
+        ImportSuccess(
+          report: const ValidationReport(
+            errors: [],
+            warnings: [],
+            metrics: ValidationMetrics.empty,
+            wasCorrected: false,
+            corrections: [],
+          ),
+          position: position,
+          fileName: selection.fileName,
+          samples: const [],
+        ),
+      );
+    }
+    return rearController.stream;
   }
 }
 
@@ -493,9 +529,63 @@ void main() {
         findsNothing,
       );
     });
-  });
 
-  // ── Error path ───────────────────────────────────────────────────────────
+    testWidgets(
+        'Go to Sessions button not shown after cancelling a partially successful import',
+        (tester) async {
+      final rearCtrl = StreamController<ImportState>();
+      final svc = _PartialSuccessFakeService(rearController: rearCtrl);
+
+      await tester.pumpWidget(
+        _wrap(
+          ImportScreen(
+            onPickFrontFile: () => _pick(_frontSelection),
+            onPickRearFile: () => _pick(_rearSelection),
+            service: svc,
+          ),
+        ),
+      );
+
+      // Select both files.
+      await tester.tap(
+        find.descendant(
+          of: find.widgetWithText(Card, 'Front Sensor'),
+          matching: find.text('Select'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.descendant(
+          of: find.widgetWithText(Card, 'Rear Sensor'),
+          matching: find.text('Select'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Start import; front completes immediately, rear stays in progress.
+      await tester.tap(find.byKey(const Key('import_button')));
+      await tester.pump();
+
+      // Emit a progress event for the rear to show it is in-flight.
+      rearCtrl.add(const ImportInProgress(0.3));
+      await tester.pump();
+
+      // Cancel while rear import is still running.
+      await tester.tap(find.byKey(const Key('cancel_button')));
+      await tester.pump();
+
+      // Even though the front file succeeded, navigation must not be offered
+      // after a cancelled import.
+      expect(
+        find.byKey(const Key('go_to_sessions_button')),
+        findsNothing,
+      );
+
+      await rearCtrl.close();
+      await tester.pumpAndSettle();
+    });
+  });
 
   group('ImportScreen – error path', () {
     testWidgets('error banner shown when import fails', (tester) async {

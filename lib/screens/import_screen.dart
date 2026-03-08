@@ -40,7 +40,7 @@ class ImportScreen extends StatefulWidget {
   final ImportService? service;
 
   /// Called when the user taps "Go to Sessions" after a successful import.
-  /// When omitted the button is still shown but performs no action.
+  /// When omitted the button is shown in a disabled state.
   final VoidCallback? onNavigateToSessions;
 
   @override
@@ -260,6 +260,7 @@ class _ImportScreenState extends State<ImportScreen> {
 
           // ── Post-import navigation ────────────────────────────────────────
           if (!_importing &&
+              !_cancelled &&
               (_frontResult != null || _rearResult != null) &&
               _errorMessage == null) ...[
             const SizedBox(height: 24),
