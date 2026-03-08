@@ -2,6 +2,8 @@
 ///
 /// All parameters have sensible defaults matching the FR-DC-004 hardware
 /// specification (200 Hz IMU, ±16 g accelerometer, ±2000 dps gyroscope).
+/// Use [autoCorrectGaps] with [maxInterpolatedSamplesPerGap] to enable
+/// bounded linear interpolation across timestamp gaps.
 class ValidationRules {
   // ── Timestamp checks ──────────────────────────────────────────────────────
 
