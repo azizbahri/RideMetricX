@@ -1,3 +1,5 @@
+import 'dart:isolate';
+
 import '../../models/imu_sample.dart';
 import '../../models/session_metadata.dart';
 import '../../models/validation_report.dart';
@@ -88,6 +90,10 @@ class ImportService {
   /// Validation rules applied after parsing.
   final ValidationService validator;
 
+  /// Content-length threshold (in code-unit count) above which parsing is
+  /// offloaded to a background isolate.  Approximately 1 MB of decoded text.
+  static const int _largeFileThreshold = 1024 * 1024;
+
   /// Runs the import pipeline for [selection] and [position].
   ///
   /// Emits [ImportInProgress] events at each pipeline stage, followed by
@@ -115,7 +121,20 @@ class ImportService {
         case DataFormat.binary:
           parser = const BinaryParser();
       }
-      final records = parser.parse(selection.content);
+
+      // For large files, run the synchronous parser in a background isolate
+      // to avoid blocking the UI thread (on web this transparently uses a
+      // Web Worker, addressing the large-file timeout requirement).
+      // Threshold: >1 MB of decoded text content.
+      final List<Map<String, dynamic>> records;
+      if (selection.content.length > _largeFileThreshold) {
+        records = await Isolate.run(
+          () => parser.parse(selection.content),
+          debugName: 'import_parse',
+        );
+      } else {
+        records = parser.parse(selection.content);
+      }
       yield const ImportInProgress(0.5);
 
       // ── 3. Record → ImuSample (50 → 70 %) ───────────────────────────────

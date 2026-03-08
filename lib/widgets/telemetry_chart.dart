@@ -3,6 +3,13 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../models/telemetry_series.dart';
+import '../services/simulation/debouncer.dart';
+
+/// How long after the last gesture event before viewport-aware decimation
+/// is recalculated.  Chosen to balance responsiveness with computation cost:
+/// short enough to feel snappy after panning/zooming, long enough to avoid
+/// running the decimation loop repeatedly during a fast gesture.
+const Duration _kViewportDecimationDelay = Duration(milliseconds: 300);
 
 // ── Viewport ──────────────────────────────────────────────────────────────────
 
@@ -115,6 +122,24 @@ class TelemetryChart extends StatefulWidget {
     return _decimate(points, maxPoints);
   }
 
+  /// Viewport-aware variant of [decimate].
+  ///
+  /// Clips [points] to the x-range of [viewport] (plus a 10 % buffer on each
+  /// side) and then decimates the visible subset to [maxPoints].  When the
+  /// user is zoomed into a small region of a large dataset, this gives
+  /// significantly higher per-pixel resolution compared to decimating the
+  /// entire dataset up-front.
+  ///
+  /// Returns an empty list when [maxPoints] ≤ 0 or when no points fall in the
+  /// (buffered) viewport window.
+  static List<Offset> decimateForViewport(
+    List<Offset> points,
+    int maxPoints,
+    ChartViewport viewport,
+  ) {
+    return _decimateViewport(points, maxPoints, viewport);
+  }
+
   @override
   TelemetryChartState createState() => TelemetryChartState();
 }
@@ -143,10 +168,20 @@ class TelemetryChartState extends State<TelemetryChart>
   // gesture handlers.  Avoids a RenderBox lookup on the wrong ancestor.
   Size _canvasSize = Size.zero;
 
-  // Decimation cache: avoid rebuilding the decimated list on every render.
+  // Global decimation cache: avoid rebuilding the decimated list on every
+  // render when the source series hasn't changed.
   List<TelemetrySeries>? _decimatedCache;
   List<TelemetrySeries>? _cachedOriginalSeries;
   int? _cachedMaxRenderedPoints;
+
+  // Viewport-aware decimation cache: provides higher resolution within the
+  // visible window when the user has zoomed into a small portion of the data.
+  // Updated asynchronously (see [_kViewportDecimationDelay]) via the debouncer
+  // so interactive panning/zooming stays smooth.
+  List<TelemetrySeries>? _viewportDecimatedCache;
+  ChartViewport? _cachedDecimationViewport;
+  final Debouncer _viewportDecimationDebouncer =
+      Debouncer(delay: _kViewportDecimationDelay);
 
   // ── Public API for tests ───────────────────────────────────────────────────
 
@@ -176,7 +211,17 @@ class TelemetryChartState extends State<TelemetryChart>
       if (!_viewportModified) {
         _viewport = _defaultViewport;
       }
+      // Series changed: invalidate viewport-aware decimation cache so it is
+      // rebuilt for the new data on the next debounce cycle.
+      _viewportDecimatedCache = null;
+      _cachedDecimationViewport = null;
     }
+  }
+
+  @override
+  void dispose() {
+    _viewportDecimationDebouncer.dispose();
+    super.dispose();
   }
 
   ChartViewport _computeDefaultViewport() {
@@ -209,9 +254,19 @@ class TelemetryChartState extends State<TelemetryChart>
 
   // ── Decimation cache ───────────────────────────────────────────────────────
 
-  /// Returns the decimated series list, reusing the cached result when the
-  /// source series and [maxRenderedPoints] have not changed.
+  /// Returns the decimated series list.
+  ///
+  /// Priority order:
+  /// 1. Viewport-aware decimation cache (populated 300 ms after the last
+  ///    gesture when the user is zoomed in) — highest resolution.
+  /// 2. Global decimation cache (entire dataset reduced to
+  ///    [TelemetryChart.maxRenderedPoints]) — fast fallback during gestures
+  ///    and at the initial full-range view.
   List<TelemetrySeries> _getDecimated() {
+    // Use the viewport-aware cache if it is ready.
+    if (_viewportDecimatedCache != null) return _viewportDecimatedCache!;
+
+    // Global decimation — reuse cached result when nothing changed.
     if (identical(_cachedOriginalSeries, widget.series) &&
         _cachedMaxRenderedPoints == widget.maxRenderedPoints) {
       return _decimatedCache!;
@@ -228,6 +283,61 @@ class TelemetryChartState extends State<TelemetryChart>
         ),
     ];
     return _decimatedCache!;
+  }
+
+  /// Schedules a debounced viewport-aware re-decimation.
+  ///
+  /// Only activates when the user has zoomed in enough for the viewport-aware
+  /// approach to meaningfully improve resolution (viewport covers less than
+  /// 80 % of the full data range).  At full zoom the global decimation is
+  /// perfectly adequate and cheaper to keep.
+  void _scheduleViewportDecimation() {
+    _viewportDecimationDebouncer.run(() {
+      if (!mounted) return;
+      final vp = _viewport;
+      final defaultVp = _defaultViewport;
+
+      // If close to full view, clear any previous viewport-specific cache
+      // so the global decimation is used again.
+      if (!_viewportModified ||
+          defaultVp.isDegenerate ||
+          vp.xRange >= defaultVp.xRange * 0.8) {
+        if (_viewportDecimatedCache != null) {
+          setState(() {
+            _viewportDecimatedCache = null;
+            _cachedDecimationViewport = null;
+          });
+        }
+        return;
+      }
+
+      // Skip rebuilding if the viewport hasn't changed meaningfully since the
+      // last high-resolution decimation (within 5 % of xRange).
+      final cached = _cachedDecimationViewport;
+      if (cached != null) {
+        final tolerance = vp.xRange * 0.05;
+        if ((vp.xMin - cached.xMin).abs() < tolerance &&
+            (vp.xMax - cached.xMax).abs() < tolerance) {
+          return;
+        }
+      }
+
+      final clipped = [
+        for (final s in widget.series)
+          TelemetrySeries(
+            label: s.label,
+            color: s.color,
+            points:
+                _decimateViewport(s.points, widget.maxRenderedPoints, vp),
+            plotType: s.plotType,
+          ),
+      ];
+
+      setState(() {
+        _viewportDecimatedCache = clipped;
+        _cachedDecimationViewport = vp;
+      });
+    });
   }
 
   // ── Key derivation ─────────────────────────────────────────────────────────
@@ -276,6 +386,7 @@ class TelemetryChartState extends State<TelemetryChart>
         );
         _viewportModified = true;
       });
+      _scheduleViewportDecimation();
     } else {
       // Multi-finger pinch-to-zoom: scale viewport around the focal point.
       final scale = details.scale.clamp(0.1, 50.0);
@@ -299,6 +410,7 @@ class TelemetryChartState extends State<TelemetryChart>
         );
         _viewportModified = true;
       });
+      _scheduleViewportDecimation();
     }
   }
 
@@ -330,9 +442,12 @@ class TelemetryChartState extends State<TelemetryChart>
   }
 
   void _resetZoom() {
+    _viewportDecimationDebouncer.cancel();
     setState(() {
       _viewport = _defaultViewport;
       _viewportModified = false;
+      _viewportDecimatedCache = null;
+      _cachedDecimationViewport = null;
       _crosshair = null;
     });
   }
@@ -474,6 +589,41 @@ List<Offset> _decimate(List<Offset> points, int maxPoints) {
   }
 
   return result;
+}
+
+/// Clips [points] to the x-range of [viewport] (plus a 10 % buffer on each
+/// side), then decimates the visible subset.
+///
+/// When the user is zoomed into a small region of a large dataset, this gives
+/// significantly higher per-pixel resolution compared to decimating the entire
+/// dataset up-front.  The 10 % buffer ensures data immediately off-screen is
+/// available so panning by a small amount doesn't cause visible gaps while
+/// the debouncer fires.
+///
+/// Returns an empty list when [maxPoints] ≤ 0 or no points fall within the
+/// (buffered) viewport window.
+List<Offset> _decimateViewport(
+  List<Offset> points,
+  int maxPoints,
+  ChartViewport viewport,
+) {
+  if (maxPoints <= 0) return const [];
+
+  // Add a 10 % buffer around the viewport so data near the edges is included.
+  final xBuffer = viewport.xRange * 0.1;
+  final xMin = viewport.xMin - xBuffer;
+  final xMax = viewport.xMax + xBuffer;
+
+  // Collect points within the buffered window.  Points are expected to be
+  // x-sorted (as produced by the IMU import pipeline) but we handle
+  // unsorted data too for robustness.
+  final visible = <Offset>[];
+  for (final p in points) {
+    if (p.dx >= xMin && p.dx <= xMax) visible.add(p);
+  }
+
+  if (visible.isEmpty) return const [];
+  return _decimate(visible, maxPoints);
 }
 
 // ── CustomPainter ─────────────────────────────────────────────────────────────
