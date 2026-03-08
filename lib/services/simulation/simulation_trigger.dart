@@ -61,6 +61,9 @@ class SimulationTrigger extends ChangeNotifier {
     _setState(SimulationState.running);
     try {
       await _onRun();
+    } catch (_) {
+      // Intentionally silenced: callers must handle errors inside onRun.
+      // The trigger always returns to idle so the UI is never stuck.
     } finally {
       _setState(SimulationState.idle);
     }
