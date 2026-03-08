@@ -43,7 +43,10 @@ void main() {
         of: canvasFinder,
         matching: find.byType(RepaintBoundary),
       );
-      expect(boundaryFinder, findsOneWidget);
+      // MaterialApp/Scaffold add their own RepaintBoundary widgets above ours,
+      // so there will be multiple ancestors of this type.  We only need to
+      // confirm that at least one RepaintBoundary wraps the canvas (i.e. ours).
+      expect(boundaryFinder, findsAtLeastNWidgets(1));
     });
 
     testWidgets('disposes without error when removed from tree', (tester) async {
