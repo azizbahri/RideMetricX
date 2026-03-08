@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'screens/import_screen.dart';
 import 'screens/sessions_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/tuning_screen.dart';
 
 /// Width threshold below which [NavigationBar] (bottom) is shown instead of
 /// [NavigationRail] (side).
@@ -33,6 +34,11 @@ const List<_NavDestination> _destinations = [
     selectedIcon: Icon(Icons.history),
   ),
   _NavDestination(
+    label: 'Tuning',
+    icon: Icon(Icons.tune_outlined),
+    selectedIcon: Icon(Icons.tune),
+  ),
+  _NavDestination(
     label: 'Settings',
     icon: Icon(Icons.settings_outlined),
     selectedIcon: Icon(Icons.settings),
@@ -58,6 +64,7 @@ class _AppShellState extends State<AppShell> {
   static const List<Widget> _pages = [
     ImportScreen(),
     SessionsScreen(),
+    TuningScreen(),
     SettingsScreen(),
   ];
 
