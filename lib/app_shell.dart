@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import 'screens/analysis_screen.dart';
@@ -6,6 +9,8 @@ import 'screens/import_screen.dart';
 import 'screens/sessions_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/tuning_screen.dart';
+import 'services/data_import/decompressor.dart';
+import 'services/data_import/import_service.dart';
 
 /// Width threshold below which [NavigationBar] (bottom) is shown instead of
 /// [NavigationRail] (side).
@@ -73,14 +78,51 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   int _selectedIndex = 0;
 
-  static const List<Widget> _pages = [
-    ImportScreen(),
-    SessionsScreen(),
-    AnalysisScreen(),
-    TuningScreen(),
-    ComparisonScreen(),
-    SettingsScreen(),
-  ];
+  /// Picks a file using the platform file picker and returns a [FileSelection]
+  /// containing the file name and decoded text content, or `null` if the user
+  /// cancelled.
+  ///
+  /// Compressed files (`.gz`, `.zip`) are decompressed via [Decompressor]
+  /// before wrapping in [FileSelection].
+  Future<FileSelection?> _pickFile() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['csv', 'json', 'bin', 'gz'],
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) return null;
+    final file = result.files.first;
+    final bytes = file.bytes;
+    if (bytes == null) return null;
+
+    final ext = file.name.split('.').last.toLowerCase();
+    final String content;
+    if (ext == 'gz' || ext == 'zip') {
+      content = Decompressor.decompress(
+        bytes,
+        Decompressor.formatFromFileName(file.name),
+      );
+    } else {
+      content = utf8.decode(bytes, allowMalformed: true);
+    }
+
+    return FileSelection(
+      fileName: file.name,
+      content: content,
+    );
+  }
+
+  List<Widget> get _pages => [
+        ImportScreen(
+          onPickFrontFile: _pickFile,
+          onPickRearFile: _pickFile,
+        ),
+        const SessionsScreen(),
+        const AnalysisScreen(),
+        const TuningScreen(),
+        const ComparisonScreen(),
+        const SettingsScreen(),
+      ];
 
   void _onDestinationSelected(int index) {
     setState(() => _selectedIndex = index);
