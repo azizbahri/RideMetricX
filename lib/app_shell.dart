@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'screens/analysis_screen.dart';
 import 'screens/import_screen.dart';
 import 'screens/sessions_screen.dart';
 import 'screens/settings_screen.dart';
@@ -34,6 +35,11 @@ const List<_NavDestination> _destinations = [
     selectedIcon: Icon(Icons.history),
   ),
   _NavDestination(
+    label: 'Analysis',
+    icon: Icon(Icons.show_chart_outlined),
+    selectedIcon: Icon(Icons.show_chart),
+  ),
+  _NavDestination(
     label: 'Tuning',
     icon: Icon(Icons.tune_outlined),
     selectedIcon: Icon(Icons.tune),
@@ -64,6 +70,7 @@ class _AppShellState extends State<AppShell> {
   static const List<Widget> _pages = [
     ImportScreen(),
     SessionsScreen(),
+    AnalysisScreen(),
     TuningScreen(),
     SettingsScreen(),
   ];
