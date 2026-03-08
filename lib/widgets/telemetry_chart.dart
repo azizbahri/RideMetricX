@@ -125,10 +125,13 @@ class TelemetryChart extends StatefulWidget {
   /// Viewport-aware variant of [decimate].
   ///
   /// Clips [points] to the x-range of [viewport] (plus a 10 % buffer on each
-  /// side) and then decimates the visible subset to [maxPoints].  When the
-  /// user is zoomed into a small region of a large dataset, this gives
-  /// significantly higher per-pixel resolution compared to decimating the
-  /// entire dataset up-front.
+  /// side) and then decimates the visible subset.  When the user is zoomed
+  /// into a small region of a large dataset, this gives significantly higher
+  /// per-pixel resolution compared to decimating the entire dataset up-front.
+  ///
+  /// Like [decimate], each bucket contributes at most **2 points** (min and
+  /// max y-value), so the returned list contains at most `2 × maxPoints`
+  /// entries.
   ///
   /// Returns an empty list when [maxPoints] ≤ 0 or when no points fall in the
   /// (buffered) viewport window.
@@ -213,6 +216,15 @@ class TelemetryChartState extends State<TelemetryChart>
       }
       // Series changed: invalidate viewport-aware decimation cache so it is
       // rebuilt for the new data on the next debounce cycle.
+      _viewportDecimatedCache = null;
+      _cachedDecimationViewport = null;
+    }
+    if (oldWidget.maxRenderedPoints != widget.maxRenderedPoints) {
+      // Point budget changed: the viewport-aware cache was built with the old
+      // budget and is now stale.  Cancel any pending debounce and clear the
+      // cache so the global decimation (which also auto-rebuilds) takes over
+      // until the next debounce cycle populates a fresh viewport cache.
+      _viewportDecimationDebouncer.cancel();
       _viewportDecimatedCache = null;
       _cachedDecimationViewport = null;
     }
@@ -359,6 +371,12 @@ class TelemetryChartState extends State<TelemetryChart>
   void _onScaleStart(ScaleStartDetails details) {
     _gestureBaseViewport = _viewport;
     _gestureFocalStart = details.localFocalPoint;
+    // Clear the viewport-aware cache so the global decimation is used while
+    // the user is actively gesturing.  This prevents the chart from rendering
+    // a stale clipped subset (e.g. from the previous zoom level) until the
+    // next debounce cycle repopulates the cache for the new viewport.
+    _viewportDecimationDebouncer.cancel();
+    _viewportDecimatedCache = null;
   }
 
   void _onScaleUpdate(ScaleUpdateDetails details) {
@@ -602,6 +620,11 @@ List<Offset> _decimate(List<Offset> points, int maxPoints) {
 ///
 /// Returns an empty list when [maxPoints] ≤ 0 or no points fall within the
 /// (buffered) viewport window.
+///
+/// **Performance:** when [points] appear x-sorted (non-decreasing dx), binary
+/// search is used to find the visible slice in O(log N) instead of O(N),
+/// which is critical for 1M+ point datasets.  Sortedness is detected by
+/// probing the first 1 024 entries; unsorted data falls back to a linear scan.
 List<Offset> _decimateViewport(
   List<Offset> points,
   int maxPoints,
@@ -614,12 +637,62 @@ List<Offset> _decimateViewport(
   final xMin = viewport.xMin - xBuffer;
   final xMax = viewport.xMax + xBuffer;
 
-  // Collect points within the buffered window.  Points are expected to be
-  // x-sorted (as produced by the IMU import pipeline) but we handle
-  // unsorted data too for robustness.
-  final visible = <Offset>[];
-  for (final p in points) {
-    if (p.dx >= xMin && p.dx <= xMax) visible.add(p);
+  if (points.isEmpty) return const [];
+
+  // Probe up to the first 1 024 points to determine whether the data is
+  // x-sorted.  This is O(1) for practical purposes even on very large lists.
+  var probablySorted = true;
+  final probeCount = math.min(points.length, 1024);
+  for (var i = 1; i < probeCount; i++) {
+    if (points[i - 1].dx > points[i].dx) {
+      probablySorted = false;
+      break;
+    }
+  }
+
+  final List<Offset> visible;
+  if (probablySorted) {
+    // Binary search for the first index with dx >= xMin.
+    int lowerBound(double target) {
+      var lo = 0;
+      var hi = points.length;
+      while (lo < hi) {
+        final mid = (lo + hi) ~/ 2;
+        if (points[mid].dx < target) {
+          lo = mid + 1;
+        } else {
+          hi = mid;
+        }
+      }
+      return lo;
+    }
+
+    // Binary search for the last index with dx <= xMax.
+    int upperBound(double target) {
+      var lo = 0;
+      var hi = points.length;
+      while (lo < hi) {
+        final mid = (lo + hi) ~/ 2;
+        if (points[mid].dx <= target) {
+          lo = mid + 1;
+        } else {
+          hi = mid;
+        }
+      }
+      return lo; // exclusive end index
+    }
+
+    final start = lowerBound(xMin);
+    final end = upperBound(xMax);
+
+    if (start >= end) return const [];
+    visible = points.sublist(start, end);
+  } else {
+    // Fallback for unsorted data: linear scan.
+    visible = [
+      for (final p in points)
+        if (p.dx >= xMin && p.dx <= xMax) p,
+    ];
   }
 
   if (visible.isEmpty) return const [];

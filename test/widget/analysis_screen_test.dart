@@ -478,33 +478,35 @@ void main() {
 
     test(
         'zoomed-in result has higher point density than global decimation '
-        'for 1M-point dataset', () {
-      // Build a 1 000 000-point dataset spanning x: 0 – 999 999.
-      const totalPoints = 1000000;
+        'for large dataset', () {
+      // 100 000 points is large enough to demonstrate the density
+      // improvement while keeping CI fast (no 1M trig calls).
+      // y-values use a sawtooth (modulo) to avoid math.sin overhead.
+      const totalPoints = 100000;
       const maxRendered = 2000;
       final bigPoints = List.generate(
         totalPoints,
-        (i) => Offset(i.toDouble(), math.sin(i * 0.000006)),
+        (i) => Offset(i.toDouble(), (i % 200).toDouble()),
       );
 
-      // Viewport covers only the first 1 % of the data range.
+      // Viewport covers only the first 1 % of the data range (x: 0–999).
       const viewport = ChartViewport(
         xMin: 0,
-        xMax: 9999,
-        yMin: -1.5,
-        yMax: 1.5,
+        xMax: 999,
+        yMin: -1,
+        yMax: 201,
       );
 
       final globalResult = TelemetryChart.decimate(bigPoints, maxRendered);
       final viewportResult = TelemetryChart.decimateForViewport(
           bigPoints, maxRendered, viewport);
 
-      // Global decimation spreads 2 000 points across the entire 1 M range.
-      // In the first-1 % window (x 0–9999) there should be only ~20 global
-      // points, whereas viewport-aware decimation provides up to 2 000 for
-      // exactly that window — a ≥10× improvement in density.
+      // Global decimation spreads 2 000 points across the entire 100 K range.
+      // In the first 1% window (x 0–999) there should be only ~20 global
+      // points, whereas viewport-aware decimation provides up to 4 000 (2 ×
+      // maxRendered) for exactly that window — a ≥10× improvement in density.
       final globalInWindow =
-          globalResult.where((p) => p.dx >= 0 && p.dx <= 9999).length;
+          globalResult.where((p) => p.dx >= 0 && p.dx <= 999).length;
       expect(
         viewportResult.length,
         greaterThan(globalInWindow * 5),

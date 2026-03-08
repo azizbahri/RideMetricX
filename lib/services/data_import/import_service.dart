@@ -12,6 +12,33 @@ import 'json_import_parser.dart';
 import 'jsonl_parser.dart';
 import 'validation_service.dart';
 
+// ── Top-level parse function (background-isolate safe) ────────────────────────
+
+/// Parses [content] in the format specified by [args.$1].
+///
+/// This is a **top-level** (non-closure) function so that it can be passed to
+/// [Isolate.run] without capturing any non-sendable objects from the
+/// enclosing scope.  Only the [DataFormat] enum value (sendable) and the raw
+/// text [String] (sendable) are transferred to the worker isolate / Web Worker.
+///
+/// Exceptions thrown by the parser are allowed to propagate naturally;
+/// [FileFormatException] implements [Exception] so it is sendable.
+List<Map<String, dynamic>> _parseInIsolate((DataFormat, String) args) {
+  final (format, content) = args;
+  final DataParser parser;
+  switch (format) {
+    case DataFormat.csv:
+      parser = const CsvImportParser();
+    case DataFormat.json:
+      parser = const JsonImportParser();
+    case DataFormat.jsonl:
+      parser = const JsonlParser();
+    case DataFormat.binary:
+      parser = const BinaryParser();
+  }
+  return parser.parse(content);
+}
+
 /// A file selected by the user for import.
 ///
 /// Bundles the original [fileName] (used for format detection) with the
@@ -110,30 +137,32 @@ class ImportService {
       yield const ImportInProgress(0.2);
 
       // ── 2. Parse (20 → 50 %) ────────────────────────────────────────────
-      final DataParser parser;
-      switch (format) {
-        case DataFormat.csv:
-          parser = const CsvImportParser();
-        case DataFormat.json:
-          parser = const JsonImportParser();
-        case DataFormat.jsonl:
-          parser = const JsonlParser();
-        case DataFormat.binary:
-          parser = const BinaryParser();
-      }
 
-      // For large files, run the synchronous parser in a background isolate
-      // to avoid blocking the UI thread (on web this transparently uses a
-      // Web Worker, addressing the large-file timeout requirement).
+      // For large files, offload parsing to a background isolate so the UI
+      // thread stays responsive (on Flutter Web this transparently uses a
+      // Web Worker).  We pass only sendable primitives — (DataFormat, String)
+      // — to the top-level function _parseInIsolate so no non-transferable
+      // objects are captured in the isolate closure.
+      //
       // Threshold: >1 MB of decoded text content.
       final List<Map<String, dynamic>> records;
       if (selection.content.length > _largeFileThreshold) {
-        records = await Isolate.run(
-          () => parser.parse(selection.content),
-          debugName: 'import_parse',
-        );
+        try {
+          records = await Isolate.run(
+            () => _parseInIsolate((format, selection.content)),
+            debugName: 'import_parse',
+          );
+        } on FileFormatException {
+          rethrow;
+        } catch (e) {
+          // Exceptions that are not directly sendable across the isolate
+          // boundary can surface as RemoteError or similar wrappers.
+          // Re-surface them as FileFormatException so the caller's error
+          // handler fires with a user-readable message.
+          throw FileFormatException(e.toString());
+        }
       } else {
-        records = parser.parse(selection.content);
+        records = _parseInIsolate((format, selection.content));
       }
       yield const ImportInProgress(0.5);
 
