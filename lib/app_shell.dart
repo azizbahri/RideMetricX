@@ -6,7 +6,7 @@ import 'screens/settings_screen.dart';
 
 /// Width threshold below which [NavigationBar] (bottom) is shown instead of
 /// [NavigationRail] (side).
-const double kMobileBreakpoint = 600.0;
+const double _kMobileBreakpoint = 600.0;
 
 /// A single top-level navigation destination.
 class _NavDestination {
@@ -69,7 +69,7 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final bool useRail = constraints.maxWidth >= kMobileBreakpoint;
+        final bool useRail = constraints.maxWidth >= _kMobileBreakpoint;
 
         if (useRail) {
           return _buildRailLayout();
@@ -83,6 +83,7 @@ class _AppShellState extends State<AppShell> {
   /// Desktop / tablet layout: NavigationRail on the left.
   Widget _buildRailLayout() {
     return Scaffold(
+      appBar: AppBar(title: Text(_destinations[_selectedIndex].label)),
       body: Row(
         children: [
           NavigationRail(
@@ -109,6 +110,7 @@ class _AppShellState extends State<AppShell> {
   /// Mobile layout: NavigationBar at the bottom.
   Widget _buildBarLayout() {
     return Scaffold(
+      appBar: AppBar(title: Text(_destinations[_selectedIndex].label)),
       body: _pages[_selectedIndex],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
