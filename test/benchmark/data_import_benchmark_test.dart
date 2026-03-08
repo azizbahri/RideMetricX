@@ -16,11 +16,14 @@
 //   - Preprocessing 6 000       < 1 000 ms
 //
 // Full 1 h @ 200 Hz benchmark (720 000 samples):
-//   Timing is measured and printed; no wall-clock assertion is enforced so
-//   CI is never gated by machine speed.  Run the full benchmark locally:
+//   Skipped by default to avoid CI slowdown / OOM. Enable with:
 //
 //     flutter test test/benchmark/data_import_benchmark_test.dart \
-//         --name "1h @ 200Hz"
+//         --dart-define=RUN_FULL_BENCHMARK=true
+//
+// Run all benchmark tests (smoke + large-file + idempotency + resilience):
+//
+//     flutter test test/benchmark/data_import_benchmark_test.dart
 
 import 'dart:math' as math;
 
@@ -31,6 +34,14 @@ import 'package:ride_metric_x/services/data_import/csv_import_parser.dart';
 import 'package:ride_metric_x/services/data_import/import_service.dart';
 import 'package:ride_metric_x/services/data_import/jsonl_parser.dart';
 import 'package:ride_metric_x/services/data_import/preprocessing_pipeline.dart';
+
+// ── Compile-time flag ─────────────────────────────────────────────────────────
+
+/// Set to `true` via `--dart-define=RUN_FULL_BENCHMARK=true` to enable the
+/// 1-hour / 720 000-sample full benchmark group.  Disabled by default so that
+/// CI is never gated by machine speed or OOM from very large allocations.
+const bool _runFullBenchmark =
+    bool.fromEnvironment('RUN_FULL_BENCHMARK', defaultValue: false);
 
 // ── Synthetic-data generators ─────────────────────────────────────────────────
 
@@ -171,19 +182,30 @@ void main() {
 
   // ── 2. Full 1 h @ 200 Hz benchmark (720 000 samples) ─────────────────────
   //
-  // Timing is measured and printed; no wall-clock threshold is asserted so
-  // CI is never gated by machine speed.  The tests do assert correctness
-  // (right sample count, first/last sample values).
+  // Skipped by default; opt-in via --dart-define=RUN_FULL_BENCHMARK=true.
+  // Timing is measured and printed; no wall-clock threshold is asserted.
+  // The tests assert correctness (right sample count, first/last sample values).
 
   group('1h @ 200Hz – full benchmark (desktop target)', () {
     // 1 h × 3 600 s/h × 200 Hz = 720 000 samples.
     // Each test generates its own data to keep tests independent and to
-    // give each an explicit, generous timeout without relying on setUpAll.
+    // give each an explicit, generous timeout.
     const fullCount = 720000;
+
+    setUp(() {
+      if (!_runFullBenchmark) {
+        // ignore: avoid_print
+        print(
+          '[BENCH] Skipping full 1h benchmark. '
+          'Run with --dart-define=RUN_FULL_BENCHMARK=true to enable.',
+        );
+      }
+    });
 
     test(
       'CSV parse 720 000 samples: measures timing and verifies correctness',
       () {
+        if (!_runFullBenchmark) return;
         // Data generation is not timed; only the parser itself is benchmarked.
         final csv = _generateCsv(fullCount);
         const parser = CsvImportParser();
@@ -211,6 +233,7 @@ void main() {
       'ImportService end-to-end 720 000 samples: measures timing and '
       'verifies correctness',
       () async {
+        if (!_runFullBenchmark) return;
         final csv = _generateCsv(fullCount);
         final sw = Stopwatch()..start();
         final result = await _runImport(csv, 'full_1h.csv');
@@ -234,6 +257,7 @@ void main() {
       'PreprocessingPipeline 720 000 samples: measures timing and verifies '
       'output length',
       () async {
+        if (!_runFullBenchmark) return;
         final csv = _generateCsv(fullCount);
         // Import is not timed; only the preprocessing stage is benchmarked.
         final result = await _runImport(csv, 'full_1h.csv') as ImportSuccess;
@@ -386,17 +410,22 @@ void main() {
       expect(out1.length, out2.length);
       expect(out1.length, out3.length);
 
-      // Verify every sample's derived fields are bit-identical across runs.
+      // Compare the full canonical serialisation of every ProcessedSample so
+      // that all derived fields (accelXLinear, accelYLinear, accelZLinear and,
+      // when integration is enabled, velocity/position) are verified for
+      // bit-for-bit equality across runs.
       for (int i = 0; i < out1.length; i++) {
         expect(
-          out1[i].accelXLinear,
-          out2[i].accelXLinear,
-          reason: 'accelXLinear must be deterministic at index $i',
+          out1[i].toMap(),
+          equals(out2[i].toMap()),
+          reason: 'ProcessedSample toMap() must be deterministic at index $i '
+              '(run 1 vs run 2)',
         );
         expect(
-          out1[i].accelZLinear,
-          out3[i].accelZLinear,
-          reason: 'accelZLinear must be deterministic at index $i',
+          out1[i].toMap(),
+          equals(out3[i].toMap()),
+          reason: 'ProcessedSample toMap() must be deterministic at index $i '
+              '(run 1 vs run 3)',
         );
       }
     });
@@ -414,17 +443,20 @@ void main() {
     test('whitespace-only content emits ImportError', () async {
       final result = await _runImport('   \n\n\t  \n', 'data.csv');
       expect(result, isA<ImportError>());
+      expect((result as ImportError).message, isNotEmpty);
     });
 
     test('header-only (no data rows) emits ImportError', () async {
       final result = await _runImport('$_csvHeader\n', 'data.csv');
       expect(result, isA<ImportError>());
+      expect((result as ImportError).message, isNotEmpty);
     });
 
     test('all-comment content emits ImportError', () async {
       const content = '# line 1\n# line 2\n# line 3\n';
       final result = await _runImport(content, 'data.csv');
       expect(result, isA<ImportError>());
+      expect((result as ImportError).message, isNotEmpty);
     });
 
     test('non-numeric timestamp in first data row emits ImportError', () async {
@@ -444,6 +476,7 @@ void main() {
       lines[5] = '20,0.02,CORRUPT,1.00,0.5,-0.3,0.1,25.3,4';
       final result = await _runImport(lines.join('\n'), 'data.csv');
       expect(result, isA<ImportError>());
+      expect((result as ImportError).message, isNotEmpty);
     });
 
     test('truncated last row (too few columns) emits ImportError', () async {
@@ -452,6 +485,7 @@ void main() {
           '5,0.03'; // truncated – only 2 of 9 fields
       final result = await _runImport(truncated, 'data.csv');
       expect(result, isA<ImportError>());
+      expect((result as ImportError).message, isNotEmpty);
     });
 
     test('row with extra columns emits ImportError', () async {
@@ -459,6 +493,7 @@ void main() {
           '0,0.02,-0.01,1.00,0.5,-0.3,0.1,25.3,0,EXTRA\n';
       final result = await _runImport(extra, 'data.csv');
       expect(result, isA<ImportError>());
+      expect((result as ImportError).message, isNotEmpty);
     });
 
     test('missing required column (accel_z_g removed) emits ImportError',
@@ -475,11 +510,13 @@ void main() {
     test('unknown file extension emits ImportError', () async {
       final result = await _runImport('some content', 'data.unknown_fmt');
       expect(result, isA<ImportError>());
+      expect((result as ImportError).message, isNotEmpty);
     });
 
     test('invalid JSON content for .json file emits ImportError', () async {
       final result = await _runImport('{not: valid json', 'data.json');
       expect(result, isA<ImportError>());
+      expect((result as ImportError).message, isNotEmpty);
     });
 
     test('invalid JSONL line emits ImportError with non-empty message',
@@ -505,6 +542,7 @@ void main() {
       }
       final result = await _runImport(buf.toString(), 'data.csv');
       expect(result, isA<ImportError>());
+      expect((result as ImportError).message, isNotEmpty);
     });
 
     test('repeated import of corrupted file consistently returns ImportError',
@@ -517,6 +555,11 @@ void main() {
           result,
           isA<ImportError>(),
           reason: 'Run $run must consistently return ImportError',
+        );
+        expect(
+          (result as ImportError).message,
+          isNotEmpty,
+          reason: 'Run $run error message must be non-empty',
         );
       }
     });
