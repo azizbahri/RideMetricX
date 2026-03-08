@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/imu_sample.dart';
 import '../models/session_metadata.dart';
 import '../models/validation_report.dart';
 import '../services/data_import/import_service.dart';
@@ -7,6 +8,9 @@ import '../services/data_import/import_service.dart';
 /// Callback for picking a file; returns [FileSelection] on success,
 /// or `null` when the user cancels.
 typedef PickFileCallback = Future<FileSelection?> Function();
+
+/// Callback invoked after a successful import with created session metadata.
+typedef ImportCompletedCallback = void Function(List<SessionMetadata> sessions);
 
 /// File import screen with front/rear sensor file selection,
 /// import-progress tracking, cancellation support, and a validation summary.
@@ -27,6 +31,7 @@ class ImportScreen extends StatefulWidget {
     this.onPickRearFile,
     this.service,
     this.onNavigateToSessions,
+    this.onImportCompleted,
   });
 
   /// Invoked when the user taps "Select" for the front sensor file.
@@ -42,6 +47,10 @@ class ImportScreen extends StatefulWidget {
   /// Called when the user taps "Go to Sessions" after a successful import.
   /// When omitted the button is shown in a disabled state.
   final VoidCallback? onNavigateToSessions;
+
+  /// Called when import finishes successfully with one or more imported
+  /// session metadata entries.
+  final ImportCompletedCallback? onImportCompleted;
 
   @override
   State<ImportScreen> createState() => _ImportScreenState();
@@ -135,9 +144,84 @@ class _ImportScreenState extends State<ImportScreen> {
       if (_rearFile != null && !_cancelled && _errorMessage == null) {
         await _runImport(_rearFile!, SensorPosition.rear, gen);
       }
+
+      // Persist imported metadata only when the run completed successfully.
+      if (!_cancelled && _errorMessage == null) {
+        final imported = _buildImportedSessions();
+        if (imported.isNotEmpty) {
+          widget.onImportCompleted?.call(imported);
+        }
+      }
     } finally {
       if (mounted && _generation == gen) setState(() => _importing = false);
     }
+  }
+
+  List<SessionMetadata> _buildImportedSessions() {
+    final now = DateTime.now().toUtc();
+    final baseId = now.toIso8601String();
+    final hasFront = _frontResult != null;
+    final hasRear = _rearResult != null;
+    final both = hasFront && hasRear;
+
+    String idFor(SensorPosition p) {
+      if (!both) return baseId;
+      return '$baseId-${p.name}';
+    }
+
+    String? pairFor(SensorPosition p) {
+      if (!both) return null;
+      final other = p == SensorPosition.front
+          ? SensorPosition.rear
+          : SensorPosition.front;
+      return idFor(other);
+    }
+
+    final sessions = <SessionMetadata>[];
+    if (_frontResult != null) {
+      sessions.add(
+        SessionMetadata(
+          sessionId: idFor(SensorPosition.front),
+          position: SensorPosition.front,
+          recordedAt: now,
+          samplingRateHz: _estimateSamplingRateHz(_frontResult!.samples),
+          pairedSessionId: pairFor(SensorPosition.front),
+        ),
+      );
+    }
+    if (_rearResult != null) {
+      sessions.add(
+        SessionMetadata(
+          sessionId: idFor(SensorPosition.rear),
+          position: SensorPosition.rear,
+          recordedAt: now,
+          samplingRateHz: _estimateSamplingRateHz(_rearResult!.samples),
+          pairedSessionId: pairFor(SensorPosition.rear),
+        ),
+      );
+    }
+    return sessions;
+  }
+
+  double _estimateSamplingRateHz(List<ImuSample> samples) {
+    if (samples.length < 2) return 200.0;
+
+    int totalDeltaMs = 0;
+    int count = 0;
+    for (int i = 1; i < samples.length; i++) {
+      final prev = samples[i - 1];
+      final curr = samples[i];
+      final dt = curr.timestampMs - prev.timestampMs;
+      if (dt > 0) {
+        totalDeltaMs += dt;
+        count++;
+      }
+    }
+
+    if (count == 0) return 200.0;
+    final avgDeltaMs = totalDeltaMs / count;
+    final hz = 1000.0 / avgDeltaMs;
+    return hz.isFinite && hz > 0 ? hz : 200.0;
   }
 
   Future<void> _runImport(

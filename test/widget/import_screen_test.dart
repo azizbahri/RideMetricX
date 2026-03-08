@@ -458,6 +458,36 @@ void main() {
       expect(navigateCalled, isTrue);
     });
 
+    testWidgets('successful import invokes onImportCompleted callback',
+        (tester) async {
+      final imported = <SessionMetadata>[];
+
+      await tester.pumpWidget(
+        _wrap(
+          ImportScreen(
+            onPickFrontFile: () => _pick(_frontSelection),
+            onImportCompleted: (sessions) => imported.addAll(sessions),
+          ),
+        ),
+      );
+
+      await tester.tap(
+        find.descendant(
+          of: find.widgetWithText(Card, 'Front Sensor'),
+          matching: find.text('Select'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('import_button')));
+      await tester.pumpAndSettle();
+
+      expect(imported, hasLength(1));
+      expect(imported.first.position, SensorPosition.front);
+      expect(imported.first.sessionId, isNotEmpty);
+      expect(imported.first.recordedAt, isNotNull);
+    });
+
     testWidgets('Go to Sessions button not shown before import completes',
         (tester) async {
       final ctrl = StreamController<ImportState>();
