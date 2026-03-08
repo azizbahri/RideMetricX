@@ -161,6 +161,7 @@ class SuspensionGeometry {
             'Linkage ratio must be positive.',
           );
         }
+        break;
 
       case LinkageType.progressive:
         if (config.r0 <= 0) {
@@ -170,6 +171,7 @@ class SuspensionGeometry {
             'Base linkage ratio r0 must be positive.',
           );
         }
+        break;
 
       case LinkageType.lookupTable:
         if (config.travelPoints.length < 2) {
@@ -198,6 +200,7 @@ class SuspensionGeometry {
             );
           }
         }
+        break;
     }
   }
 }

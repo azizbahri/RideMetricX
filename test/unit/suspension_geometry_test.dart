@@ -40,7 +40,7 @@ void main() {
     });
 
     test('lookupTable constructor stores fields correctly', () {
-      const cfg = LinkageConfig.lookupTable(
+      final cfg = LinkageConfig.lookupTable(
         travelPoints: [0.0, 100.0, 200.0],
         ratioPoints: [2.0, 2.8, 3.5],
         wheelTravelMaxMm: 200.0,
@@ -80,7 +80,7 @@ void main() {
     });
 
     test('lookupTable toString contains type and point count', () {
-      const cfg = LinkageConfig.lookupTable(
+      final cfg = LinkageConfig.lookupTable(
         travelPoints: [0.0, 100.0, 200.0],
         ratioPoints: [2.0, 2.8, 3.5],
         wheelTravelMaxMm: 200.0,
@@ -246,7 +246,7 @@ void main() {
   // ── SuspensionGeometry – lookup-table linkage ──────────────────────────────
 
   group('SuspensionGeometry (lookupTable linkage) – UT-SM-007', () {
-    const cfg = LinkageConfig.lookupTable(
+    final cfg = LinkageConfig.lookupTable(
       travelPoints: [0.0, 100.0, 200.0],
       ratioPoints: [2.0, 2.8, 3.5],
       wheelTravelMaxMm: 200.0,
@@ -369,7 +369,7 @@ void main() {
 
     test(
         'lookup-table: displacement below first point clamps to first ratio', () {
-      const ltCfg = LinkageConfig.lookupTable(
+      final ltCfg = LinkageConfig.lookupTable(
         travelPoints: [10.0, 100.0, 200.0],
         ratioPoints: [2.0, 2.8, 3.5],
         wheelTravelMaxMm: 200.0,
@@ -384,7 +384,7 @@ void main() {
 
     test(
         'lookup-table: displacement above last point clamps to last ratio', () {
-      const ltCfg = LinkageConfig.lookupTable(
+      final ltCfg = LinkageConfig.lookupTable(
         travelPoints: [0.0, 100.0, 190.0],
         ratioPoints: [2.0, 2.8, 3.4],
         wheelTravelMaxMm: 200.0,
@@ -428,7 +428,7 @@ void main() {
     });
 
     test('throws for lookup table with fewer than two points', () {
-      const cfg = LinkageConfig.lookupTable(
+      final cfg = LinkageConfig.lookupTable(
         travelPoints: [0.0],
         ratioPoints: [2.0],
         wheelTravelMaxMm: 200.0,
@@ -440,7 +440,7 @@ void main() {
     });
 
     test('throws for lookup table with mismatched lengths', () {
-      const cfg = LinkageConfig.lookupTable(
+      final cfg = LinkageConfig.lookupTable(
         travelPoints: [0.0, 100.0],
         ratioPoints: [2.0, 2.8, 3.5],
         wheelTravelMaxMm: 200.0,
@@ -452,7 +452,7 @@ void main() {
     });
 
     test('throws for non-ascending lookup table travel points', () {
-      const cfg = LinkageConfig.lookupTable(
+      final cfg = LinkageConfig.lookupTable(
         travelPoints: [100.0, 0.0],
         ratioPoints: [2.0, 2.8],
         wheelTravelMaxMm: 200.0,
@@ -464,7 +464,7 @@ void main() {
     });
 
     test('throws for non-positive ratio in lookup table', () {
-      const cfg = LinkageConfig.lookupTable(
+      final cfg = LinkageConfig.lookupTable(
         travelPoints: [0.0, 100.0],
         ratioPoints: [2.0, 0.0],
         wheelTravelMaxMm: 200.0,

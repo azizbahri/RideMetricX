@@ -51,11 +51,13 @@ class LinkageConfig {
         travelPoints = const [],
         ratioPoints = const [];
 
-  const LinkageConfig.lookupTable({
-    required this.travelPoints,
-    required this.ratioPoints,
+  LinkageConfig.lookupTable({
+    required List<double> travelPoints,
+    required List<double> ratioPoints,
     required this.wheelTravelMaxMm,
   })  : type = LinkageType.lookupTable,
+        travelPoints = List.unmodifiable(travelPoints),
+        ratioPoints = List.unmodifiable(ratioPoints),
         constantRatio = 0.0,
         r0 = 0.0,
         r1 = 0.0,
