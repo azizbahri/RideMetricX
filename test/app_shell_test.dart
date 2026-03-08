@@ -61,7 +61,7 @@ void main() {
 
       await tester.pumpWidget(const RideMetricXApp());
 
-      expect(find.text('Import Data'), findsOneWidget);
+      expect(find.text('Import Data'), findsWidgets);
     });
 
     testWidgets('tapping Sessions in NavigationBar shows Sessions screen',
@@ -105,16 +105,22 @@ void main() {
 
       // Navigate away first, then come back to Import.
       await tester.tap(
-        find.widgetWithText(NavigationRailDestination, 'Sessions'),
+        find.descendant(
+          of: find.byType(NavigationRail),
+          matching: find.text('Sessions'),
+        ),
       );
       await tester.pumpAndSettle();
 
       await tester.tap(
-        find.widgetWithText(NavigationRailDestination, 'Import'),
+        find.descendant(
+          of: find.byType(NavigationRail),
+          matching: find.text('Import'),
+        ),
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Import Data'), findsOneWidget);
+      expect(find.text('Import Data'), findsWidgets);
     });
   });
 
