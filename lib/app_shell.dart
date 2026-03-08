@@ -11,6 +11,7 @@ import 'screens/import_screen.dart';
 import 'screens/sessions_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/tuning_screen.dart';
+import 'screens/visualization_screen.dart';
 import 'services/data_import/decompressor.dart';
 import 'services/data_import/import_service.dart';
 
@@ -46,6 +47,11 @@ const List<_NavDestination> _destinations = [
     label: 'Analysis',
     icon: Icon(Icons.show_chart_outlined),
     selectedIcon: Icon(Icons.show_chart),
+  ),
+  _NavDestination(
+    label: '3D View',
+    icon: Icon(Icons.view_in_ar_outlined),
+    selectedIcon: Icon(Icons.view_in_ar),
   ),
   _NavDestination(
     label: 'Tuning',
@@ -130,6 +136,7 @@ class _AppShellState extends State<AppShell> {
           onOpenSession: _onOpenSession,
         ),
         AnalysisScreen(sessionTitle: _activeSession?.sessionId),
+        const VisualizationScreen(),
         const TuningScreen(),
         const ComparisonScreen(),
         const SettingsScreen(),
