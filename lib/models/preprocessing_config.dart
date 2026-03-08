@@ -1,8 +1,8 @@
-/// Configuration models for the IMU data preprocessing pipeline.
-///
-/// Use [PreprocessingConfig] to control which stages are active and to set
-/// their parameters.  All fields have sensible defaults, so the pipeline can
-/// be used with `const PreprocessingConfig()` out of the box.
+// Configuration models for the IMU data preprocessing pipeline.
+//
+// Use [PreprocessingConfig] to control which stages are active and to set
+// their parameters.  All fields have sensible defaults, so the pipeline can
+// be used with `const PreprocessingConfig()` out of the box.
 
 // ── Enumerations ──────────────────────────────────────────────────────────────
 

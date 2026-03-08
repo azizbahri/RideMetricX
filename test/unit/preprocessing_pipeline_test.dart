@@ -23,8 +23,6 @@ import 'dart:math' as math;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:ride_metric_x/models/imu_sample.dart';
-import 'package:ride_metric_x/models/preprocessing_config.dart';
-import 'package:ride_metric_x/models/processed_sample.dart';
 import 'package:ride_metric_x/services/data_import/preprocessing_pipeline.dart';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -392,7 +390,7 @@ void main() {
 
       // Measure the amplitude of the filtered signal in the steady-state
       // region (after the filter has settled: skip first 10% of samples).
-      final start = n ~/ 10;
+      const start = 40; // skip first ~10% for filter settling
       double maxLinear = 0.0;
       double minLinear = double.infinity;
       for (int i = start; i < result.length; i++) {
