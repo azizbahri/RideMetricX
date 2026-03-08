@@ -262,6 +262,18 @@ void main() {
     test('no warnings for empty stream', () {
       expect(service.validate([]).warnings, isEmpty);
     });
+
+    test('empty stream returns unmodifiable lists', () {
+      final report = service.validate([]);
+      expect(
+        () => report.errors.add(const ValidationError(message: 'x')),
+        throwsUnsupportedError,
+      );
+      expect(
+        () => report.warnings.add(const ValidationWarning(message: 'x')),
+        throwsUnsupportedError,
+      );
+    });
   });
 
   // ── ValidationService: single sample ─────────────────────────────────────
@@ -662,6 +674,29 @@ void main() {
       // accel_x_g and accel_z_g both stuck.
       expect(report.metrics.stuckFieldCount, greaterThanOrEqualTo(2));
     });
+
+    test('does not warn for stuck when values are non-finite', () {
+      // A run of Inf values is already flagged as non-finite errors;
+      // stuck-sensor detection should not additionally warn.
+      final samples = List.generate(
+        25,
+        (i) => _sample(
+            timestampMs: i * 5, accelX: double.infinity, sampleCount: i),
+      );
+      const service = ValidationService(
+        rules: ValidationRules(
+          stuckSensorWindowSamples: 20,
+          outlierSigmaThreshold: 999.0,
+        ),
+      );
+      final report = service.validate(samples);
+      expect(
+        report.warnings.any((w) =>
+            w.field == 'accel_x_g' &&
+            w.message.toLowerCase().contains('stuck')),
+        isFalse,
+      );
+    });
   });
 
   // ── ValidationService: auto-correction ───────────────────────────────────
@@ -677,11 +712,11 @@ void main() {
     const service = ValidationService(rules: rules);
 
     test('inserts interpolated samples to fill gap', () {
-      // t=0 and t=100 ms: gap = 100 ms; nominal period = 5 ms.
-      // Expect ~19 interpolated samples inserted between them.
+      // t=0 (sc=0) and t=100 ms (sc=20): gap = 100 ms; period = 5 ms.
+      // sampleCount gap allows 19 insertions (sc 1..19).
       final samples = [
         _sample(timestampMs: 0, accelX: 0.0),
-        _sample(timestampMs: 100, accelX: 1.0, sampleCount: 1),
+        _sample(timestampMs: 100, accelX: 1.0, sampleCount: 20),
       ];
       final report = service.validate(samples);
       expect(report.wasCorrected, isTrue);
@@ -691,7 +726,7 @@ void main() {
     test('correction is logged in corrections list', () {
       final samples = [
         _sample(timestampMs: 0),
-        _sample(timestampMs: 100, sampleCount: 1),
+        _sample(timestampMs: 100, sampleCount: 20),
       ];
       final report = service.validate(samples);
       expect(report.corrections, isNotEmpty);
@@ -699,11 +734,12 @@ void main() {
     });
 
     test('interpolated sample has intermediate timestamp', () {
+      // t=0 (sc=0) → t=10 ms (sc=2): period=5ms, gap=10ms > threshold=4ms.
+      // sampleCount gap allows 1 insertion (sc=1 < 2).
       final samples = [
         _sample(timestampMs: 0, accelX: 0.0),
-        _sample(timestampMs: 10, accelX: 1.0, sampleCount: 1),
+        _sample(timestampMs: 10, accelX: 1.0, sampleCount: 2),
       ];
-      // Gap = 10 ms which is > maxTimestampGapMs=20? No, let's use 5ms rule.
       const rulesSmall = ValidationRules(
         maxTimestampGapMs: 4,
         expectedSampleRateHz: 200.0, // period = 5 ms
@@ -730,7 +766,7 @@ void main() {
       const defaultService = ValidationService();
       final samples = [
         _sample(timestampMs: 0),
-        _sample(timestampMs: 500, sampleCount: 1),
+        _sample(timestampMs: 500, sampleCount: 100),
       ];
       final report = defaultService.validate(samples);
       expect(report.wasCorrected, isFalse);
@@ -739,11 +775,75 @@ void main() {
     test('original list is not mutated by correction', () {
       final samples = [
         _sample(timestampMs: 0),
-        _sample(timestampMs: 100, sampleCount: 1),
+        _sample(timestampMs: 100, sampleCount: 20),
       ];
       final originalLength = samples.length;
       service.validate(samples);
       expect(samples.length, originalLength);
+    });
+
+    test('inserted samples have monotonically increasing sampleCount', () {
+      // sc=0 → sc=20 with 100 ms gap; inserted samples get sc 1..19.
+      final samples = [
+        _sample(timestampMs: 0, sampleCount: 0),
+        _sample(timestampMs: 100, sampleCount: 20),
+      ];
+      final report = service.validate(samples);
+      expect(report.wasCorrected, isTrue);
+      // 2 original + 19 inserted = 21 total samples.
+      expect(report.metrics.sampleCount, 21);
+      expect(report.metrics.correctedCount, 19);
+    });
+
+    test(
+        'emits warning when interpolation is capped by maxInterpolatedSamplesPerGap',
+        () {
+      const cappedRules = ValidationRules(
+        maxTimestampGapMs: 20,
+        expectedSampleRateHz: 200.0, // period = 5 ms
+        autoCorrectGaps: true,
+        maxInterpolatedSamplesPerGap: 2, // cap at 2 insertions
+        stuckSensorWindowSamples: 9999,
+        outlierSigmaThreshold: 999.0,
+      );
+      const cappedService = ValidationService(rules: cappedRules);
+      // gap = 100 ms would need 19 insertions; cap limits to 2.
+      final samples = [
+        _sample(timestampMs: 0, sampleCount: 0),
+        _sample(timestampMs: 100, sampleCount: 20),
+      ];
+      final report = cappedService.validate(samples);
+      expect(
+        report.warnings.any((w) =>
+            w.field == 'timestamp_ms' &&
+            w.message.toLowerCase().contains('capped')),
+        isTrue,
+      );
+      expect(report.metrics.correctedCount, 2);
+    });
+
+    test('emits warning and skips interpolation when expectedSampleRateHz <= 0',
+        () {
+      const badRules = ValidationRules(
+        maxTimestampGapMs: 20,
+        expectedSampleRateHz: 0.0, // invalid
+        autoCorrectGaps: true,
+        stuckSensorWindowSamples: 9999,
+        outlierSigmaThreshold: 999.0,
+      );
+      const badService = ValidationService(rules: badRules);
+      final samples = [
+        _sample(timestampMs: 0),
+        _sample(timestampMs: 100, sampleCount: 20),
+      ];
+      final report = badService.validate(samples);
+      expect(
+        report.warnings.any((w) =>
+            w.message.toLowerCase().contains('positive') ||
+            w.message.toLowerCase().contains('expectedsamplerateHz')),
+        isTrue,
+      );
+      expect(report.wasCorrected, isFalse);
     });
   });
 

@@ -79,11 +79,11 @@ class ValidationService {
         message: 'Sample list is empty.',
       ));
       return ValidationReport(
-        errors: errors,
-        warnings: warnings,
+        errors: List.unmodifiable(errors),
+        warnings: List.unmodifiable(warnings),
         metrics: ValidationMetrics.empty,
         wasCorrected: false,
-        corrections: corrections,
+        corrections: List.unmodifiable(corrections),
       );
     }
 
@@ -221,6 +221,12 @@ class ValidationService {
       for (int i = 1; i < workingSamples.length && !fieldFlagged; i++) {
         final prev = _fieldValue(workingSamples[i - 1], field);
         final curr = _fieldValue(workingSamples[i], field);
+        // Skip / reset runs when encountering non-finite values to avoid
+        // misleading stuck-sensor warnings on values that are already invalid.
+        if (!prev.isFinite || !curr.isFinite) {
+          runLength = 1;
+          continue;
+        }
         if (curr == prev) {
           runLength++;
           if (runLength >= rules.stuckSensorWindowSamples) {
@@ -245,40 +251,64 @@ class ValidationService {
     if (rules.autoCorrectGaps && errors.isEmpty) {
       // Only attempt correction when there are no structural errors (e.g.
       // non-monotonic timestamps), since interpolation requires ordering.
-      final corrected = <ImuSample>[];
-      corrected.add(workingSamples.first);
-
-      for (int i = 1; i < workingSamples.length; i++) {
-        final prev = workingSamples[i - 1];
-        final curr = workingSamples[i];
-        final gap = curr.timestampMs - prev.timestampMs;
+      if (rules.expectedSampleRateHz <= 0) {
+        // Guard: a non-positive rate cannot produce a valid period.
+        warnings.add(const ValidationWarning(
+          message: 'Auto-correction is enabled but expectedSampleRateHz is '
+              'not positive; gap interpolation was skipped.',
+        ));
+      } else {
         final nominalPeriodMs = (1000.0 / rules.expectedSampleRateHz).round();
+        final corrected = <ImuSample>[];
+        corrected.add(workingSamples.first);
 
-        if (gap > rules.maxTimestampGapMs && nominalPeriodMs > 0) {
-          // Insert linearly interpolated samples to fill the gap.
-          int t = prev.timestampMs + nominalPeriodMs;
-          int insertCount = 0;
-          while (t < curr.timestampMs) {
-            final frac = (t - prev.timestampMs) / gap.toDouble();
-            final interp = _interpolate(
-                prev, curr, t, frac, prev.sampleCount + insertCount + 1);
-            corrected.add(interp);
-            insertCount++;
-            t += nominalPeriodMs;
+        for (int i = 1; i < workingSamples.length; i++) {
+          final prev = workingSamples[i - 1];
+          final curr = workingSamples[i];
+          final gap = curr.timestampMs - prev.timestampMs;
+
+          if (gap > rules.maxTimestampGapMs && nominalPeriodMs > 0) {
+            // Insert linearly interpolated samples to fill the gap.
+            // nextSampleCount is kept strictly between prev.sampleCount and
+            // curr.sampleCount to preserve sampleCount monotonicity.
+            int t = prev.timestampMs + nominalPeriodMs;
+            int insertCount = 0;
+            int nextSampleCount = prev.sampleCount + 1;
+            while (t < curr.timestampMs &&
+                nextSampleCount < curr.sampleCount &&
+                insertCount < rules.maxInterpolatedSamplesPerGap) {
+              final frac = (t - prev.timestampMs) / gap.toDouble();
+              final interp = _interpolate(prev, curr, t, frac, nextSampleCount);
+              corrected.add(interp);
+              insertCount++;
+              nextSampleCount++;
+              t += nominalPeriodMs;
+            }
+            // Warn if the loop stopped early (cap or sampleCount exhausted)
+            // while there was still timestamp range left to fill.
+            if (t < curr.timestampMs) {
+              warnings.add(ValidationWarning(
+                message: 'Auto-correction between sample[${i - 1}] and '
+                    'sample[$i] was capped at $insertCount inserted '
+                    'sample(s); gap of $gap ms was only partially filled.',
+                field: 'timestamp_ms',
+                sampleIndex: i,
+              ));
+            }
+            if (insertCount > 0) {
+              wasCorrected = true;
+              corrections.add(
+                'Interpolated $insertCount sample(s) across gap of $gap ms '
+                'between sample[${i - 1}] (t=${prev.timestampMs} ms) '
+                'and sample[$i] (t=${curr.timestampMs} ms).',
+              );
+            }
           }
-          if (insertCount > 0) {
-            wasCorrected = true;
-            corrections.add(
-              'Interpolated $insertCount sample(s) across gap of $gap ms '
-              'between sample[${i - 1}] (t=${prev.timestampMs} ms) '
-              'and sample[$i] (t=${curr.timestampMs} ms).',
-            );
-          }
+          corrected.add(curr);
         }
-        corrected.add(curr);
-      }
 
-      workingSamples = corrected;
+        workingSamples = corrected;
+      }
     }
 
     // ── Metrics ───────────────────────────────────────────────────────────

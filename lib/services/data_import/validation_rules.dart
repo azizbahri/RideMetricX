@@ -70,6 +70,16 @@ class ValidationRules {
   /// Defaults to `false`.
   final bool autoCorrectGaps;
 
+  /// Maximum number of samples to insert when auto-correcting a single gap.
+  ///
+  /// If a gap would require more interpolated samples than this limit, the
+  /// correction is truncated and a [ValidationWarning] is emitted for that
+  /// gap.  This prevents runaway CPU/memory usage on corrupted data with
+  /// large timestamp jumps (minutes/hours).
+  ///
+  /// Defaults to 1000 (5 seconds at 200 Hz).
+  final int maxInterpolatedSamplesPerGap;
+
   const ValidationRules({
     this.maxTimestampGapMs = 50,
     this.expectedSampleRateHz = 200.0,
@@ -83,5 +93,6 @@ class ValidationRules {
     this.outlierSigmaThreshold = 5.0,
     this.stuckSensorWindowSamples = 20,
     this.autoCorrectGaps = false,
+    this.maxInterpolatedSamplesPerGap = 1000,
   });
 }
