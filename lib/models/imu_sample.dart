@@ -68,16 +68,16 @@ class ImuSample {
 
   /// Returns all fields as a [Map] using the canonical CSV column names.
   Map<String, dynamic> toMap() => {
-    'timestamp_ms': timestampMs,
-    'accel_x_g': accelXG,
-    'accel_y_g': accelYG,
-    'accel_z_g': accelZG,
-    'gyro_x_dps': gyroXDps,
-    'gyro_y_dps': gyroYDps,
-    'gyro_z_dps': gyroZDps,
-    'temp_c': tempC,
-    'sample_count': sampleCount,
-  };
+        'timestamp_ms': timestampMs,
+        'accel_x_g': accelXG,
+        'accel_y_g': accelYG,
+        'accel_z_g': accelZG,
+        'gyro_x_dps': gyroXDps,
+        'gyro_y_dps': gyroYDps,
+        'gyro_z_dps': gyroZDps,
+        'temp_c': tempC,
+        'sample_count': sampleCount,
+      };
 
   @override
   String toString() =>

@@ -51,17 +51,18 @@ ImuSample validSample({
   double gy = 0.0,
   double gz = 0.0,
   double temp = 25.0,
-}) => ImuSample(
-  timestampMs: t,
-  accelXG: ax,
-  accelYG: ay,
-  accelZG: az,
-  gyroXDps: gx,
-  gyroYDps: gy,
-  gyroZDps: gz,
-  tempC: temp,
-  sampleCount: n,
-);
+}) =>
+    ImuSample(
+      timestampMs: t,
+      accelXG: ax,
+      accelYG: ay,
+      accelZG: az,
+      gyroXDps: gx,
+      gyroYDps: gy,
+      gyroZDps: gz,
+      tempC: temp,
+      sampleCount: n,
+    );
 
 // ── TC-DC-001: Sampling-rate accuracy ─────────────────────────────────────────
 
@@ -321,7 +322,8 @@ void main() {
       expect(result.errors.any((e) => e.contains('TC-DC-007')), isTrue);
     });
 
-    test('fails when combined offsets exceed limit '
+    test(
+        'fails when combined offsets exceed limit '
         '(front=+80ms, rear=−80ms → relative=160ms)', () {
       final front = SessionMetadata(
         sessionId: 'front-005',

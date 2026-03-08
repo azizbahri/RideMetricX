@@ -45,10 +45,8 @@ class CsvParser {
     }
 
     // Enforce exact canonical header order and column count.
-    final headerCols = lines.first
-        .split(',')
-        .map((c) => c.trim().toLowerCase())
-        .toList();
+    final headerCols =
+        lines.first.split(',').map((c) => c.trim().toLowerCase()).toList();
     if (headerCols.length != expectedHeaders.length) {
       throw FormatException(
         'CSV header must have exactly ${expectedHeaders.length} columns '

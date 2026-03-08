@@ -44,8 +44,7 @@ class ValidationResult {
   });
 
   @override
-  String toString() =>
-      'ValidationResult(isValid=$isValid, '
+  String toString() => 'ValidationResult(isValid=$isValid, '
       'errors=${errors.length}, warnings=${warnings.length})';
 }
 
@@ -229,8 +228,8 @@ class ImuValidator {
     int jitterCount = 0;
 
     for (int i = 1; i < samples.length; i++) {
-      final intervalMs = (samples[i].timestampMs - samples[i - 1].timestampMs)
-          .toDouble();
+      final intervalMs =
+          (samples[i].timestampMs - samples[i - 1].timestampMs).toDouble();
       if ((intervalMs - expectedIntervalMs).abs() > toleranceMs) {
         jitterCount++;
       }
