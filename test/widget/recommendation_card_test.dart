@@ -311,7 +311,7 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: AnalysisScreen(
-              tabs: [singleTab],
+              tabs: const [singleTab],
               recommendations: [_makeRec()],
             ),
           ),
@@ -326,7 +326,7 @@ void main() {
         'does not show RecommendationsPanel when recommendations is null',
         (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: AnalysisScreen(tabs: [singleTab]),
           ),
@@ -340,11 +340,11 @@ void main() {
     testWidgets('shows empty recommendations panel with no-issues text',
         (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: AnalysisScreen(
               tabs: [singleTab],
-              recommendations: const [],
+              recommendations: [],
             ),
           ),
         ),
@@ -364,7 +364,7 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: AnalysisScreen(
-              tabs: [singleTab],
+              tabs: const [singleTab],
               recommendations: [rec],
               onApplyRecommendation: (p) => applied = p,
             ),
