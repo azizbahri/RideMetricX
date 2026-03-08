@@ -113,7 +113,7 @@ void main() {
 
     test('frontAligned and rearAligned are unmodifiable via service output',
         () {
-      final service = SynchronizationService();
+      final service = const SynchronizationService();
       final result = service.alignManual(front, rear, 0);
       expect(
         () => result.frontAligned.add(_sample(timestampMs: 99)),
@@ -351,7 +351,7 @@ void main() {
 
   group('SynchronizationService integration (paired front/rear streams)', () {
     /// Parses the 9-column IMU CSV lines (skipping comment and header rows).
-    List<ImuSample> _parseCsvLines(String csv) {
+    List<ImuSample> parseCsvLines(String csv) {
       final samples = <ImuSample>[];
       for (final line in csv.split('\n')) {
         final trimmed = line.trim();
@@ -369,7 +369,7 @@ void main() {
 
     // Inline sample data mirrors assets/data/front_imu_sample.csv and
     // assets/data/rear_imu_sample.csv so the test has no asset dependency.
-    const _frontCsv = '''
+    const frontCsv = '''
 # RideMetricX – Front Suspension IMU Sample Data
 timestamp_ms,accel_x_g,accel_y_g,accel_z_g,gyro_x_dps,gyro_y_dps,gyro_z_dps,temp_c,sample_count
 0,0.02,-0.01,1.00,0.50,-0.30,0.10,25.3,0
@@ -394,7 +394,7 @@ timestamp_ms,accel_x_g,accel_y_g,accel_z_g,gyro_x_dps,gyro_y_dps,gyro_z_dps,temp
 95,0.02,0.02,1.00,0.50,0.30,0.10,26.0,19
 ''';
 
-    const _rearCsv = '''
+    const rearCsv = '''
 # RideMetricX – Rear Suspension IMU Sample Data
 timestamp_ms,accel_x_g,accel_y_g,accel_z_g,gyro_x_dps,gyro_y_dps,gyro_z_dps,temp_c,sample_count
 0,0.01,-0.01,0.98,0.30,-0.20,0.08,26.1,0
@@ -420,8 +420,8 @@ timestamp_ms,accel_x_g,accel_y_g,accel_z_g,gyro_x_dps,gyro_y_dps,gyro_z_dps,temp
 ''';
 
     test('manual zero-offset: both streams fully overlap (20 samples)', () {
-      final front = _parseCsvLines(_frontCsv);
-      final rear = _parseCsvLines(_rearCsv);
+      final front = parseCsvLines(frontCsv);
+      final rear = parseCsvLines(rearCsv);
       const service = SynchronizationService();
 
       final result = service.alignManual(front, rear, 0);
@@ -432,8 +432,8 @@ timestamp_ms,accel_x_g,accel_y_g,accel_z_g,gyro_x_dps,gyro_y_dps,gyro_z_dps,temp
     });
 
     test('manual +5 ms offset: overlap is 19 samples', () {
-      final front = _parseCsvLines(_frontCsv);
-      final rear = _parseCsvLines(_rearCsv);
+      final front = parseCsvLines(frontCsv);
+      final rear = parseCsvLines(rearCsv);
       const service = SynchronizationService();
 
       // offsetMs = 5 → rear shifted to t = -5..90ms; overlap = 0..90ms → 19 samples
@@ -445,8 +445,8 @@ timestamp_ms,accel_x_g,accel_y_g,accel_z_g,gyro_x_dps,gyro_y_dps,gyro_z_dps,temp
 
     test('auto alignment on correlated sample data: sync quality is reported',
         () {
-      final front = _parseCsvLines(_frontCsv);
-      final rear = _parseCsvLines(_rearCsv);
+      final front = parseCsvLines(frontCsv);
+      final rear = parseCsvLines(rearCsv);
       const service = SynchronizationService();
 
       final result = service.alignAuto(front, rear);
@@ -460,8 +460,8 @@ timestamp_ms,accel_x_g,accel_y_g,accel_z_g,gyro_x_dps,gyro_y_dps,gyro_z_dps,temp
     });
 
     test('toMap persists synchronization parameters', () {
-      final front = _parseCsvLines(_frontCsv);
-      final rear = _parseCsvLines(_rearCsv);
+      final front = parseCsvLines(frontCsv);
+      final rear = parseCsvLines(rearCsv);
       const service = SynchronizationService();
 
       final result = service.alignManual(front, rear, 10);
