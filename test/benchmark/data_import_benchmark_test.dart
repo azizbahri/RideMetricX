@@ -218,7 +218,7 @@ void main() {
         final throughput = ms > 0 ? (fullCount / (ms / 1000.0)).round() : -1;
         // ignore: avoid_print
         print(
-          '[BENCH] 1h CSV parse: ${ms} ms  '
+          '[BENCH] 1h CSV parse: $ms ms  '
           '($throughput samples/s, '
           'target ≤ 30 000 ms desktop / ≤ 60 000 ms mobile)',
         );
@@ -241,7 +241,7 @@ void main() {
         final ms = sw.elapsedMilliseconds;
         // ignore: avoid_print
         print(
-          '[BENCH] 1h ImportService e2e: ${ms} ms  '
+          '[BENCH] 1h ImportService e2e: $ms ms  '
           '(target ≤ 30 000 ms desktop / ≤ 60 000 ms mobile)',
         );
         expect(result, isA<ImportSuccess>());
@@ -268,7 +268,7 @@ void main() {
         final ms = sw.elapsedMilliseconds;
         // ignore: avoid_print
         print(
-          '[BENCH] 1h Preprocessing: ${ms} ms  '
+          '[BENCH] 1h Preprocessing: $ms ms  '
           '(target ≤ 30 000 ms desktop / ≤ 60 000 ms mobile)',
         );
         expect(processed.length, fullCount);
