@@ -81,6 +81,9 @@ class _AppShellState extends State<AppShell> {
   int _selectedIndex = 0;
   final SessionRepository _sessionRepository = SessionRepository();
 
+  /// The session currently open in the Analysis workspace, if any.
+  SessionMetadata? _activeSession;
+
   /// Picks a file using the platform file picker and returns a [FileSelection]
   /// containing the file name and decoded text content, or `null` if the user
   /// cancelled.
@@ -122,8 +125,11 @@ class _AppShellState extends State<AppShell> {
           onNavigateToSessions: () => _onDestinationSelected(1),
           onImportCompleted: _onImportCompleted,
         ),
-        SessionsScreen(repository: _sessionRepository),
-        const AnalysisScreen(),
+        SessionsScreen(
+          repository: _sessionRepository,
+          onOpenSession: _onOpenSession,
+        ),
+        AnalysisScreen(sessionTitle: _activeSession?.sessionId),
         const TuningScreen(),
         const ComparisonScreen(),
         const SettingsScreen(),
@@ -133,6 +139,13 @@ class _AppShellState extends State<AppShell> {
     for (final session in sessions) {
       _sessionRepository.add(session);
     }
+  }
+
+  void _onOpenSession(SessionMetadata session) {
+    setState(() {
+      _activeSession = session;
+      _selectedIndex = 2; // Navigate to Analysis tab
+    });
   }
 
   void _onDestinationSelected(int index) {
