@@ -12,25 +12,33 @@ import '../../models/spring_force_result.dart';
 /// const config = SpringConfig(
 ///   type: SpringType.linear,
 ///   springRateNPerMm: 9.0,
-///   preloadMm: 10.0,
 /// );
 /// final result = SpringModel.calculateForce(config, displacementMm: 30.0);
-/// print(result.forceN); // 360.0 N
+/// print(result.forceN); // 270.0 N  (k × x = 9 × 30)
 /// ```
 class SpringModel {
   const SpringModel._();
 
   /// Calculates the spring force and stored elastic energy at [displacementMm].
   ///
-  /// The [displacementMm] is the **additional** compression from the free
-  /// (unloaded) position.  [SpringConfig.preloadMm] is added internally to
-  /// obtain the total spring compression used in the energy calculation, while
-  /// the returned [SpringForceResult.forceN] represents only the restoring
-  /// force at [displacementMm] (preload force is constant and handled by the
-  /// caller's static equilibrium).
+  /// [displacementMm] is the compression from the free (unloaded) position.
+  /// [SpringConfig.preloadMm] is stored on the config for use by higher-level
+  /// solvers (e.g., static-equilibrium setup); it does **not** affect the force
+  /// or energy returned here, which are purely a function of [displacementMm]
+  /// and the spring rate coefficients.
   ///
-  /// Throws [ArgumentError] if [SpringConfig.springRateNPerMm] ≤ 0 or if a
-  /// dual-rate config has a non-positive [SpringConfig.secondarySpringRateNPerMm].
+  /// Negative [displacementMm] (extension) is supported for [SpringType.linear]
+  /// and [SpringType.dualRate] but is rejected for [SpringType.progressive]
+  /// because the k₂·x³ energy term becomes non-physical (negative) under
+  /// extension.
+  ///
+  /// Throws [ArgumentError] if:
+  /// - [SpringConfig.springRateNPerMm] ≤ 0, or
+  /// - a dual-rate config has a non-positive
+  ///   [SpringConfig.secondarySpringRateNPerMm], or
+  /// - a dual-rate config has a non-positive
+  ///   [SpringConfig.dualRateBreakpointMm], or
+  /// - a progressive spring receives a negative [displacementMm].
   static SpringForceResult calculateForce(
     SpringConfig config, {
     required double displacementMm,
@@ -54,13 +62,21 @@ class SpringModel {
         'Spring rate must be positive.',
       );
     }
-    if (config.type == SpringType.dualRate &&
-        config.secondarySpringRateNPerMm <= 0) {
-      throw ArgumentError.value(
-        config.secondarySpringRateNPerMm,
-        'secondarySpringRateNPerMm',
-        'Secondary spring rate must be positive for dual-rate springs.',
-      );
+    if (config.type == SpringType.dualRate) {
+      if (config.secondarySpringRateNPerMm <= 0) {
+        throw ArgumentError.value(
+          config.secondarySpringRateNPerMm,
+          'secondarySpringRateNPerMm',
+          'Secondary spring rate must be positive for dual-rate springs.',
+        );
+      }
+      if (config.dualRateBreakpointMm <= 0) {
+        throw ArgumentError.value(
+          config.dualRateBreakpointMm,
+          'dualRateBreakpointMm',
+          'Dual-rate breakpoint must be positive.',
+        );
+      }
     }
   }
 
@@ -86,10 +102,20 @@ class SpringModel {
   /// Progressive spring: F = k₁ × x + k₂ × x²
   ///
   /// Elastic energy: E = ½ k₁ × x² + ⅓ k₂ × x³
+  ///
+  /// Negative displacement is rejected because the k₂·x³ energy term would
+  /// become negative, which is non-physical for stored elastic energy.
   static SpringForceResult _progressive(
     SpringConfig config,
     double displacementMm,
   ) {
+    if (displacementMm < 0) {
+      throw ArgumentError.value(
+        displacementMm,
+        'displacementMm',
+        'Negative displacement is not supported for progressive springs.',
+      );
+    }
     final k1 = config.springRateNPerMm; // N/mm
     final k2 = config.progressiveRateNPerMm2; // N/mm²
     final x = displacementMm; // mm

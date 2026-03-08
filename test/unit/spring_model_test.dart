@@ -210,6 +210,22 @@ void main() {
         throwsArgumentError,
       );
     });
+
+    test('preloadMm does not change force/energy for a given displacement', () {
+      // preloadMm is stored on the config for use by higher-level solvers;
+      // SpringModel.calculateForce uses only displacementMm and rate coefficients.
+      const preloadConfig = SpringConfig(
+        type: SpringType.linear,
+        springRateNPerMm: k,
+        preloadMm: 10.0,
+      );
+      final result = SpringModel.calculateForce(
+        preloadConfig,
+        displacementMm: 30.0,
+      );
+      expect(result.forceN, closeTo(270.0, 1e-9)); // k × x = 9 × 30
+      expect(result.elasticEnergyJ, closeTo(4.05, 1e-9)); // ½ × k × x²
+    });
   });
 
   // ── SpringModel — UT-SM-002: progressive spring ─────────────────────────────
@@ -279,6 +295,16 @@ void main() {
       // In a linear spring the force would exactly double; in a progressive
       // spring doubling displacement more than doubles the force.
       expect(r2.forceN, greaterThan(r1.forceN * 2.0));
+    });
+
+    test('throws ArgumentError for negative displacement', () {
+      expect(
+        () => SpringModel.calculateForce(
+          progressiveConfig,
+          displacementMm: -10.0,
+        ),
+        throwsArgumentError,
+      );
     });
   });
 
@@ -359,6 +385,32 @@ void main() {
         springRateNPerMm: 8.0,
         dualRateBreakpointMm: 50.0,
         secondarySpringRateNPerMm: 0.0,
+      );
+      expect(
+        () => SpringModel.calculateForce(badConfig, displacementMm: 10.0),
+        throwsArgumentError,
+      );
+    });
+
+    test('throws ArgumentError for zero breakpoint', () {
+      const badConfig = SpringConfig(
+        type: SpringType.dualRate,
+        springRateNPerMm: 8.0,
+        dualRateBreakpointMm: 0.0,
+        secondarySpringRateNPerMm: 14.0,
+      );
+      expect(
+        () => SpringModel.calculateForce(badConfig, displacementMm: 10.0),
+        throwsArgumentError,
+      );
+    });
+
+    test('throws ArgumentError for negative breakpoint', () {
+      const badConfig = SpringConfig(
+        type: SpringType.dualRate,
+        springRateNPerMm: 8.0,
+        dualRateBreakpointMm: -5.0,
+        secondarySpringRateNPerMm: 14.0,
       );
       expect(
         () => SpringModel.calculateForce(badConfig, displacementMm: 10.0),
