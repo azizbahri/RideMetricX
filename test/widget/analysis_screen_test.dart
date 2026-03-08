@@ -425,4 +425,110 @@ void main() {
       expect(result, isEmpty);
     });
   });
+
+  // ── TelemetryChart.decimateForViewport ─────────────────────────────────────
+
+  group('TelemetryChart.decimateForViewport', () {
+    /// Full-range viewport that covers all 1 000 points (x: 0 – 999).
+    const fullViewport = ChartViewport(
+      xMin: 0,
+      xMax: 999,
+      yMin: -1,
+      yMax: 1,
+    );
+
+    /// Zoomed-in viewport covering only x: 0 – 99 (10 % of the data).
+    const zoomedViewport = ChartViewport(
+      xMin: 0,
+      xMax: 99,
+      yMin: -1,
+      yMax: 1,
+    );
+
+    late List<Offset> points1k;
+
+    setUp(() {
+      points1k = List.generate(
+        1000,
+        (i) => Offset(i.toDouble(), math.sin(i * 0.01)),
+      );
+    });
+
+    test('returns empty list when maxPoints is 0', () {
+      final result =
+          TelemetryChart.decimateForViewport(points1k, 0, fullViewport);
+      expect(result, isEmpty);
+    });
+
+    test('returns empty list when no points fall in viewport', () {
+      const outOfRange =
+          ChartViewport(xMin: 2000, xMax: 3000, yMin: -1, yMax: 1);
+      final result =
+          TelemetryChart.decimateForViewport(points1k, 200, outOfRange);
+      expect(result, isEmpty);
+    });
+
+    test('result is bounded by 2 × maxPoints', () {
+      const maxPoints = 200;
+      final result = TelemetryChart.decimateForViewport(
+          points1k, maxPoints, zoomedViewport);
+      expect(result.length, lessThanOrEqualTo(2 * maxPoints));
+      expect(result, isNotEmpty);
+    });
+
+    test(
+        'zoomed-in result has higher point density than global decimation '
+        'for large dataset', () {
+      // 100 000 points is large enough to demonstrate the density
+      // improvement while keeping CI fast (no 1M trig calls).
+      // y-values use a sawtooth (modulo) to avoid math.sin overhead.
+      const totalPoints = 100000;
+      const maxRendered = 2000;
+      final bigPoints = List.generate(
+        totalPoints,
+        (i) => Offset(i.toDouble(), (i % 200).toDouble()),
+      );
+
+      // Viewport covers only the first 1 % of the data range (x: 0–999).
+      const viewport = ChartViewport(
+        xMin: 0,
+        xMax: 999,
+        yMin: -1,
+        yMax: 201,
+      );
+
+      final globalResult = TelemetryChart.decimate(bigPoints, maxRendered);
+      final viewportResult = TelemetryChart.decimateForViewport(
+          bigPoints, maxRendered, viewport);
+
+      // Global decimation spreads 2 000 points across the entire 100 K range.
+      // In the first 1% window (x 0–999) there should be only ~20 global
+      // points, whereas viewport-aware decimation provides up to 4 000 (2 ×
+      // maxRendered) for exactly that window — a ≥10× improvement in density.
+      final globalInWindow =
+          globalResult.where((p) => p.dx >= 0 && p.dx <= 999).length;
+      expect(
+        viewportResult.length,
+        greaterThan(globalInWindow * 5),
+        reason: 'viewport decimation should give at least 5× more points '
+            'inside the zoomed window than global decimation',
+      );
+    });
+
+    test('includes buffer region beyond viewport edges', () {
+      // Viewport: x 400–600. Buffer (10 %) adds 20 units on each side.
+      const viewport =
+          ChartViewport(xMin: 400, xMax: 600, yMin: -1, yMax: 1);
+      final result =
+          TelemetryChart.decimateForViewport(points1k, 500, viewport);
+
+      // With a 10 % buffer the window is x [380, 620].  There should be
+      // points with dx < 400 and dx > 600 in the result (unless maxPoints
+      // decimation removed them, which it shouldn't for a 500-point budget).
+      expect(result.any((p) => p.dx < 400), isTrue,
+          reason: 'buffer region below viewport.xMin should be included');
+      expect(result.any((p) => p.dx > 600), isTrue,
+          reason: 'buffer region above viewport.xMax should be included');
+    });
+  });
 }
