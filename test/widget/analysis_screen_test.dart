@@ -130,14 +130,14 @@ void main() {
       final tab1 = _makeTab(
         title: 'Accel',
         series: [
-          TelemetrySeries(
+          const TelemetrySeries(
               label: 'Front Z', color: Colors.blue, points: [Offset.zero]),
         ],
       );
       final tab2 = _makeTab(
         title: 'Gyro',
         series: [
-          TelemetrySeries(
+          const TelemetrySeries(
               label: 'Gyro X', color: Colors.green, points: [Offset.zero]),
         ],
       );
@@ -240,15 +240,15 @@ void main() {
       final tab = _makeTab(
         title: 'Mixed',
         series: [
-          TelemetrySeries(
+          const TelemetrySeries(
             label: seriesALabel,
             color: Colors.blue,
-            points: [const Offset(0, 1), const Offset(1, 2)],
+            points: [Offset(0, 1), Offset(1, 2)],
           ),
-          TelemetrySeries(
+          const TelemetrySeries(
             label: seriesBLabel,
             color: Colors.orange,
-            points: [const Offset(0, 0.5), const Offset(1, 0.8)],
+            points: [Offset(0, 0.5), Offset(1, 0.8)],
             plotType: PlotType.scatter,
           ),
         ],
@@ -265,14 +265,14 @@ void main() {
       final tabA = _makeTab(
         title: 'A',
         series: [
-          TelemetrySeries(
+          const TelemetrySeries(
               label: 'AlphaChannel', color: Colors.blue, points: [Offset.zero]),
         ],
       );
       final tabB = _makeTab(
         title: 'B',
         series: [
-          TelemetrySeries(
+          const TelemetrySeries(
               label: 'BetaChannel', color: Colors.red, points: [Offset.zero]),
         ],
       );
@@ -291,9 +291,9 @@ void main() {
 
     testWidgets('empty series list renders chart without legend',
         (WidgetTester tester) async {
-      final tab = ChartTab(
+      const tab = ChartTab(
         title: 'Empty',
-        series: const [],
+        series: [],
         xLabel: 'ms',
         yLabel: 'val',
       );

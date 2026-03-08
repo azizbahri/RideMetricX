@@ -308,8 +308,8 @@ class TelemetryChartState extends State<TelemetryChart>
 
     // Map the tap's canvas-space position to the plot area, then convert to
     // data-space.  plotRect margins mirror those defined in _ChartPainter.
-    final plotLeft = _ChartPainter._left;
-    final plotTop = _ChartPainter._top;
+    const plotLeft = _ChartPainter._left;
+    const plotTop = _ChartPainter._top;
     final plotWidth = size.width - _ChartPainter._left - _ChartPainter._right;
     final plotHeight = size.height - _ChartPainter._top - _ChartPainter._bottom;
 
