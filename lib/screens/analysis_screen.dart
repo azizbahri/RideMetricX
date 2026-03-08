@@ -2,7 +2,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../models/recommendation.dart';
+import '../models/suspension_parameters.dart';
 import '../models/telemetry_series.dart';
+import '../widgets/recommendation_card.dart';
 import '../widgets/telemetry_chart.dart';
 
 // ── ChartTab ──────────────────────────────────────────────────────────────────
@@ -46,11 +49,26 @@ class ChartTab {
 ///
 /// When [tabs] is omitted the screen renders a built-in demo dataset so the
 /// workspace is useful before real session data is wired up.
+///
+/// Pass [recommendations] to surface the [RecommendationsPanel] below the
+/// charts (FR-UI-007).  Connect [onApplyRecommendation] to propagate
+/// one-click apply actions to the caller.
 class AnalysisScreen extends StatelessWidget {
-  const AnalysisScreen({super.key, this.tabs});
+  const AnalysisScreen({
+    super.key,
+    this.tabs,
+    this.recommendations,
+    this.onApplyRecommendation,
+  });
 
   /// Optional override for the chart tabs.  Inject a custom list in tests.
   final List<ChartTab>? tabs;
+
+  /// When non-null, a [RecommendationsPanel] is shown below the chart area.
+  final List<Recommendation>? recommendations;
+
+  /// Called when the user taps "Apply Suggestion" on a recommendation card.
+  final void Function(TuningParameters)? onApplyRecommendation;
 
   // ── Semantic keys for tests ──────────────────────────────────────────────
   static const Key tabBarKey = Key('analysis_tab_bar');
@@ -59,8 +77,18 @@ class AnalysisScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final effectiveTabs = tabs ?? _buildDemoTabs();
 
-    if (effectiveTabs.isEmpty) {
+    if (effectiveTabs.isEmpty && recommendations == null) {
       return const _EmptyState();
+    }
+
+    if (effectiveTabs.isEmpty) {
+      // No charts but recommendations are present – show panel only.
+      return SingleChildScrollView(
+        child: RecommendationsPanel(
+          recommendations: recommendations!,
+          onApply: onApplyRecommendation,
+        ),
+      );
     }
 
     return DefaultTabController(
@@ -76,6 +104,13 @@ class AnalysisScreen extends StatelessWidget {
               ],
             ),
           ),
+          if (recommendations != null) ...[
+            const Divider(height: 1),
+            _RecommendationSection(
+              recommendations: recommendations!,
+              onApply: onApplyRecommendation,
+            ),
+          ],
         ],
       ),
     );
@@ -129,6 +164,32 @@ class _ChartTabPage extends StatelessWidget {
       SnackBar(
         content: Text('Exporting "${tab.title}" as CSV…'),
         duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+}
+
+// ── Recommendations section ───────────────────────────────────────────────────
+
+/// Scrollable container for the [RecommendationsPanel] shown below the charts.
+class _RecommendationSection extends StatelessWidget {
+  const _RecommendationSection({
+    required this.recommendations,
+    this.onApply,
+  });
+
+  final List<Recommendation> recommendations;
+  final void Function(TuningParameters)? onApply;
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxHeight: 280),
+      child: SingleChildScrollView(
+        child: RecommendationsPanel(
+          recommendations: recommendations,
+          onApply: onApply,
+        ),
       ),
     );
   }
