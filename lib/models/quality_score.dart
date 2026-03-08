@@ -145,20 +145,19 @@ class QualityScore {
     final n = m.sampleCount;
 
     // NaN penalty: nanCount counts individual channel NaNs; each sample has
-    // _sensorChannelCount channels.  Max penalty: _maxNanPenalty points.
+    // _sensorChannelCount channels.  Penalty scales linearly from 0 to
+    // _maxNanPenalty across the full 0–1 fraction.
     final nanFraction =
         (m.nanCount / (n * _sensorChannelCount.toDouble())).clamp(0.0, 1.0);
-    score -=
-        (nanFraction * _maxNanPenalty * 10).round().clamp(0, _maxNanPenalty);
+    score -= (nanFraction * _maxNanPenalty).round().clamp(0, _maxNanPenalty);
 
-    // Gap penalty: up to _maxGapPenalty points.
+    // Gap penalty: scales linearly from 0 to _maxGapPenalty.
     final gapFraction = (m.gapCount / n).clamp(0.0, 1.0);
-    score -=
-        (gapFraction * _maxGapPenalty * 5).round().clamp(0, _maxGapPenalty);
+    score -= (gapFraction * _maxGapPenalty).round().clamp(0, _maxGapPenalty);
 
-    // Outlier penalty: up to _maxOutlierPenalty points.
+    // Outlier penalty: scales linearly from 0 to _maxOutlierPenalty.
     final outlierFraction = (m.outlierCount / n).clamp(0.0, 1.0);
-    score -= (outlierFraction * _maxOutlierPenalty * 5)
+    score -= (outlierFraction * _maxOutlierPenalty)
         .round()
         .clamp(0, _maxOutlierPenalty);
 

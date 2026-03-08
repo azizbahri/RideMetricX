@@ -2,7 +2,7 @@
 /// required to access a requested file or resource.
 ///
 /// On mobile platforms this typically means the user denied storage or media
-/// access.  On desktop it can arise from file-system ACLs or sandboxing
+/// access. On desktop it can arise from file-system ACLs or sandboxing
 /// restrictions.
 class PlatformPermissionException implements Exception {
   /// Human-readable description of the permission failure.

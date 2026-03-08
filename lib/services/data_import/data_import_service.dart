@@ -236,11 +236,10 @@ class DataImportService {
                   rearSuccess.report.metrics.effectiveSampleRateHz > 0
                       ? rearSuccess.report.metrics.effectiveSampleRateHz
                       : 200.0,
-              // SyncResult.offsetMs = ms that front started AFTER rear.
-              // For rear metadata the offset must be negated: a positive front
-              // offset means rear started BEFORE front, so from rear's
-              // perspective it needs to wait +offsetMs before the front data
-              // becomes valid.
+              // For rear metadata we negate this value so that the sign keeps
+              // the convention: positive means "this sensor started AFTER the
+              // paired sensor". Thus, if front starts after rear (offsetMs > 0),
+              // rear.syncOffsetMs will be negative, indicating rear started first.
               syncOffsetMs: syncResult != null ? -(syncResult.offsetMs) : 0,
               pairedSessionId: frontSuccess != null ? id : null,
             )
@@ -263,13 +262,13 @@ class DataImportService {
       _store[id] = session;
       yield SessionImportSuccess(session);
     } on PlatformPermissionException catch (e) {
-      yield SessionImportError(e.message);
+      yield SessionImportError(e.toString());
     } on CorruptedDataException catch (e) {
-      yield SessionImportError(e.message);
+      yield SessionImportError(e.toString());
     } on SynchronizationException catch (e) {
-      yield SessionImportError(e.message);
+      yield SessionImportError(e.toString());
     } on FileFormatException catch (e) {
-      yield SessionImportError(e.message);
+      yield SessionImportError(e.toString());
     } catch (e) {
       yield SessionImportError(e.toString());
     }
@@ -293,9 +292,10 @@ class DataImportService {
 
   /// Runs [ImportService.importFile] and returns the [ImportSuccess] result.
   ///
-  /// Maps all [ImportError] events to [CorruptedDataException] so that the
-  /// outer `importSession` catch block can surface them as [SessionImportError]
-  /// with the original diagnostic message preserved.
+  /// Format/structural failures (unknown extension, unsupported file type) are
+  /// mapped to [FileFormatException].  Payload-level errors (bad field values,
+  /// missing required columns, empty record set) are mapped to
+  /// [CorruptedDataException].  Both carry the original diagnostic message.
   Future<ImportSuccess> _parseFile(
     FileSelection file,
     SensorPosition position,
@@ -305,11 +305,19 @@ class DataImportService {
       if (state is ImportSuccess) {
         result = state;
       } else if (state is ImportError) {
-        // Map all import failures to CorruptedDataException so callers see a
-        // consistent domain exception.  The original message (which already
-        // describes whether the problem is a format issue, missing field, etc.)
-        // is preserved for diagnostics.
-        throw CorruptedDataException(state.message, fileName: file.fileName);
+        // "No records found" and per-row/field failures indicate the file was
+        // decodable but its payload is bad → CorruptedDataException.
+        // All other failures (unsupported format, unknown extension, JSON parse
+        // error) indicate a structural/format problem → FileFormatException.
+        final msg = state.message;
+        final isPayloadError = msg.contains('No records found') ||
+            msg.contains('Row ') ||
+            msg.startsWith('Row') ||
+            msg.contains('Field "');
+        if (isPayloadError) {
+          throw CorruptedDataException(msg, fileName: file.fileName);
+        }
+        throw FileFormatException(msg);
       }
     }
     if (result == null) {
