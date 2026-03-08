@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 
 import 'screens/analysis_screen.dart';
 import 'screens/import_screen.dart';
 import 'screens/sessions_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/tuning_screen.dart';
+import 'services/data_import/import_service.dart';
 
 /// Width threshold below which [NavigationBar] (bottom) is shown instead of
 /// [NavigationRail] (side).
@@ -67,13 +69,41 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   int _selectedIndex = 0;
 
-  static const List<Widget> _pages = [
-    ImportScreen(),
-    SessionsScreen(),
-    AnalysisScreen(),
-    TuningScreen(),
-    SettingsScreen(),
+  List<Widget> get _pages => [
+    ImportScreen(
+      onPickFrontFile: _pickFile,
+      onPickRearFile: _pickFile,
+    ),
+    const SessionsScreen(),
+    const AnalysisScreen(),
+    const TuningScreen(),
+    const SettingsScreen(),
   ];
+
+  /// Platform file picker implementation.
+  Future<FileSelection?> _pickFile() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['csv', 'bin', 'dat', 'json', 'jsonl', 'gz', 'zip'],
+      withData: false,
+      withReadStream: true,
+    );
+
+    if (result == null || result.files.isEmpty) {
+      return null;
+    }
+
+    final file = result.files.first;
+    if (file.path == null) {
+      return null;
+    }
+
+    return FileSelection(
+      fileName: file.name,
+      filePath: file.path!,
+      fileSizeBytes: file.size,
+    );
+  }
 
   void _onDestinationSelected(int index) {
     setState(() => _selectedIndex = index);
