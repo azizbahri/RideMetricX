@@ -256,6 +256,21 @@ void main() {
       final events = await _collect(_svc, sel, SensorPosition.front);
       expect(events.last, isA<ImportError>());
     });
+
+    test('ImportError message includes field name when field is missing',
+        () async {
+      // CSV with correct structure but missing accel_z_g column (only 8
+      // columns).  The error message should name the missing/mismatched field.
+      const bad = 'timestamp_ms,accel_x_g,accel_y_g,'
+          'gyro_x_dps,gyro_y_dps,gyro_z_dps,temp_c,sample_count\n'
+          '0,0.02,-0.01,0.5,-0.3,0.1,25.3,0\n';
+      const sel = FileSelection(fileName: 'missing_col.csv', content: bad);
+      final events = await _collect(_svc, sel, SensorPosition.front);
+      expect(events.last, isA<ImportError>());
+      final error = events.last as ImportError;
+      // The field name should appear in the error message.
+      expect(error.message, contains('accel_z_g'));
+    });
   });
 
   // ── Validation report in success ─────────────────────────────────────────

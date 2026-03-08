@@ -65,6 +65,31 @@ class _FakeImportService extends ImportService {
       _controller.stream;
 }
 
+/// Fake service that uses [frontStream] for the front sensor and records
+/// whether the rear import was ever started via [onRearCalled].
+class _TwoFileFakeService extends ImportService {
+  _TwoFileFakeService({
+    required this.frontStream,
+    required this.onRearCalled,
+  });
+
+  final Stream<ImportState> frontStream;
+  final VoidCallback onRearCalled;
+
+  @override
+  Stream<ImportState> importFile(
+    FileSelection selection,
+    SensorPosition position,
+  ) {
+    if (position == SensorPosition.rear) {
+      onRearCalled();
+      // Return an empty stream – the test verifies this is never reached.
+      return const Stream.empty();
+    }
+    return frontStream;
+  }
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 void main() {
@@ -417,6 +442,98 @@ void main() {
 
       await ctrl.close();
       await tester.pumpAndSettle();
+    });
+  });
+
+  // ── Dual-file import ─────────────────────────────────────────────────────
+
+  group('ImportScreen – dual-file import', () {
+    testWidgets('both summary cards shown when front and rear succeed',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          ImportScreen(
+            onPickFrontFile: () => _pick(_frontSelection),
+            onPickRearFile: () => _pick(_rearSelection),
+          ),
+        ),
+      );
+
+      // Select front file.
+      await tester.tap(
+        find.descendant(
+          of: find.widgetWithText(Card, 'Front Sensor'),
+          matching: find.text('Select'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Select rear file.
+      await tester.tap(
+        find.descendant(
+          of: find.widgetWithText(Card, 'Rear Sensor'),
+          matching: find.text('Select'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('import_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('front.csv'), findsWidgets);
+      expect(find.textContaining('rear.csv'), findsWidgets);
+    });
+
+    testWidgets('rear import is skipped when front import emits an error',
+        (tester) async {
+      // The front controller will emit an error; the rear controller should
+      // never be subscribed to (since the error guard prevents it).
+      int rearCallCount = 0;
+      final frontCtrl = StreamController<ImportState>();
+      final svc = _TwoFileFakeService(
+        frontStream: frontCtrl.stream,
+        onRearCalled: () => rearCallCount++,
+      );
+
+      await tester.pumpWidget(
+        _wrap(
+          ImportScreen(
+            onPickFrontFile: () => _pick(_frontSelection),
+            onPickRearFile: () => _pick(_rearSelection),
+            service: svc,
+          ),
+        ),
+      );
+
+      // Select both files.
+      await tester.tap(
+        find.descendant(
+          of: find.widgetWithText(Card, 'Front Sensor'),
+          matching: find.text('Select'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: find.widgetWithText(Card, 'Rear Sensor'),
+          matching: find.text('Select'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Start import.
+      await tester.tap(find.byKey(const Key('import_button')));
+      await tester.pump();
+
+      // Front file import fails.
+      frontCtrl.add(const ImportError('front file is corrupt'));
+      await frontCtrl.close();
+      await tester.pumpAndSettle();
+
+      // Error banner for the front failure should be shown.
+      expect(find.text('front file is corrupt'), findsOneWidget);
+      // Rear import should never have been called.
+      expect(rearCallCount, 0);
     });
   });
 

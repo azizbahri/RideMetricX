@@ -152,7 +152,8 @@ class ImportService {
   /// Maps raw parser records to [ImuSample] objects.
   ///
   /// Throws [FormatException] when a required field is missing or has an
-  /// incompatible type.
+  /// incompatible type.  The field name is included in the exception message
+  /// to help users identify which column is absent or malformed.
   List<ImuSample> _mapRecords(List<Map<String, dynamic>> records) {
     final samples = <ImuSample>[];
     for (int i = 0; i < records.length; i++) {
@@ -160,15 +161,15 @@ class ImportService {
       try {
         samples.add(
           ImuSample(
-            timestampMs: _toInt(r['timestamp_ms']),
-            accelXG: _toDouble(r['accel_x_g']),
-            accelYG: _toDouble(r['accel_y_g']),
-            accelZG: _toDouble(r['accel_z_g']),
-            gyroXDps: _toDouble(r['gyro_x_dps']),
-            gyroYDps: _toDouble(r['gyro_y_dps']),
-            gyroZDps: _toDouble(r['gyro_z_dps']),
-            tempC: _toDouble(r['temp_c']),
-            sampleCount: _toInt(r['sample_count']),
+            timestampMs: _toInt(r['timestamp_ms'], 'timestamp_ms'),
+            accelXG: _toDouble(r['accel_x_g'], 'accel_x_g'),
+            accelYG: _toDouble(r['accel_y_g'], 'accel_y_g'),
+            accelZG: _toDouble(r['accel_z_g'], 'accel_z_g'),
+            gyroXDps: _toDouble(r['gyro_x_dps'], 'gyro_x_dps'),
+            gyroYDps: _toDouble(r['gyro_y_dps'], 'gyro_y_dps'),
+            gyroZDps: _toDouble(r['gyro_z_dps'], 'gyro_z_dps'),
+            tempC: _toDouble(r['temp_c'], 'temp_c'),
+            sampleCount: _toInt(r['sample_count'], 'sample_count'),
           ),
         );
       } catch (e) {
@@ -178,21 +179,21 @@ class ImportService {
     return samples;
   }
 
-  static int _toInt(dynamic v) {
+  static int _toInt(dynamic v, String field) {
     if (v is int) return v;
     if (v is double) return v.toInt();
     if (v is String) return int.parse(v.trim());
     throw FormatException(
-      'Expected integer, got ${v.runtimeType}',
+      'Field "$field": expected integer, got ${v?.runtimeType ?? 'null'}',
     );
   }
 
-  static double _toDouble(dynamic v) {
+  static double _toDouble(dynamic v, String field) {
     if (v is double) return v;
     if (v is int) return v.toDouble();
     if (v is String) return double.parse(v.trim());
     throw FormatException(
-      'Expected number, got ${v.runtimeType}',
+      'Field "$field": expected number, got ${v?.runtimeType ?? 'null'}',
     );
   }
 }

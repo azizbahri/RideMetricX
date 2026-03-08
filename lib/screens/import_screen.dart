@@ -54,6 +54,14 @@ class _ImportScreenState extends State<ImportScreen> {
   bool _cancelled = false;
   String? _errorMessage;
 
+  /// Incremented on every new import start and on cancel.
+  ///
+  /// Each [_runImport] call captures the generation at start time and skips
+  /// state updates if the current generation has advanced, preventing stale
+  /// stream events from a previous (or cancelled) import from corrupting a
+  /// newly started import's state.
+  int _generation = 0;
+
   // ── Results after a successful import ─────────────────────────────────────
 
   ImportSuccess? _frontResult;
@@ -103,6 +111,7 @@ class _ImportScreenState extends State<ImportScreen> {
 
   Future<void> _startImport() async {
     if (!_hasSelection || _importing) return;
+    final gen = ++_generation;
     setState(() {
       _importing = true;
       _progress = 0.0;
@@ -113,22 +122,23 @@ class _ImportScreenState extends State<ImportScreen> {
     });
     try {
       if (_frontFile != null && !_cancelled) {
-        await _runImport(_frontFile!, SensorPosition.front);
+        await _runImport(_frontFile!, SensorPosition.front, gen);
       }
-      if (_rearFile != null && !_cancelled) {
-        await _runImport(_rearFile!, SensorPosition.rear);
+      if (_rearFile != null && !_cancelled && _errorMessage == null) {
+        await _runImport(_rearFile!, SensorPosition.rear, gen);
       }
     } finally {
-      if (mounted) setState(() => _importing = false);
+      if (mounted && _generation == gen) setState(() => _importing = false);
     }
   }
 
   Future<void> _runImport(
     FileSelection selection,
     SensorPosition position,
+    int gen,
   ) async {
     await for (final state in _service.importFile(selection, position)) {
-      if (_cancelled || !mounted) break;
+      if (_cancelled || !mounted || _generation != gen) break;
       if (state is ImportInProgress) {
         setState(() => _progress = state.progress);
       } else if (state is ImportSuccess) {
@@ -146,10 +156,13 @@ class _ImportScreenState extends State<ImportScreen> {
     }
   }
 
-  void _cancel() => setState(() {
-        _cancelled = true;
-        _importing = false;
-      });
+  void _cancel() {
+    _generation++; // Invalidate any running import stream.
+    setState(() {
+      _cancelled = true;
+      _importing = false;
+    });
+  }
 
   // ── Build ─────────────────────────────────────────────────────────────────
 
@@ -449,7 +462,7 @@ class _MetricChip extends StatelessWidget {
   }
 }
 
-/// Expandable list of errors or warnings.
+/// List of errors or warnings.
 class _IssueList extends StatelessWidget {
   const _IssueList({
     required this.label,
