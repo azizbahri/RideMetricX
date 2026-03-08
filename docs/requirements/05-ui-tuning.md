@@ -1,7 +1,7 @@
 # Component 5: UI & Parameter Tuning Requirements (Flutter)
 
 ## Overview
-The User Interface and Parameter Tuning module provides a modern, responsive GUI using Flutter with Material Design 3. It enables users to import ride data, adjust suspension parameters, visualize results in real-time, and analyze ride sessions through an integrated 3D viewport and 2D telemetry charts. The UI is cross-platform compatible with Windows, Android, and iOS.
+The User Interface and Parameter Tuning module provides a modern, responsive GUI using Flutter with Material Design 3. It enables users to import ride data, adjust suspension parameters, visualize results in real-time, and analyze ride sessions through an integrated 3D viewport and 2D telemetry charts. The UI is cross-platform compatible with Windows, Android, and Web.
 
 ---
 
@@ -1316,7 +1316,7 @@ def validate_clicks(value):
 
 ## 9. Future Enhancements
 
-- **Mobile App**: iOS/Android companion app for quick review
+- **Progressive Web App (PWA)**: Installable web app for cross-device access and offline support
 - **Cloud Sync**: Sync sessions across devices
 - **Collaboration**: Share sessions with friends/tuners
 - **Community Presets**: Download setups from other riders

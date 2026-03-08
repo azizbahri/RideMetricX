@@ -1,7 +1,7 @@
 # Component 1: Data Collection Requirements
 
 ## Overview
-Physical IMU dataloggers mounted on the front and rear suspension of a Yamaha Tenere 700 (2025) to capture real-world telemetry during rides. Data files from these dataloggers will be imported into the RideMetricX cross-platform application (Windows, Android, iOS) for analysis and visualization.
+Physical IMU dataloggers mounted on the front and rear suspension of a Yamaha Tenere 700 (2025) to capture real-world telemetry during rides. Data files from these dataloggers will be imported into the RideMetricX cross-platform application (Windows, Android, Web) for analysis and visualization.
 
 ---
 
@@ -11,7 +11,7 @@ Physical IMU dataloggers mounted on the front and rear suspension of a Yamaha Te
 - The RideMetricX Flutter application supports importing datalogger files on all platforms
 - **Windows**: Use standard file dialog to select CSV/binary files from USB-connected dataloggers
 - **Android**: Import files via USB OTG, cloud storage (Google Drive, Dropbox), or direct device storage
-- **iOS**: Import via Files app, cloud storage (iCloud Drive), or AirDrop from connected devices
+- **Web**: Import via file input, drag-and-drop, or cloud storage integration
 - **File Sharing**: All platforms support sharing session files between devices via cloud storage or export/import
 
 ---
@@ -259,12 +259,12 @@ Total: 38 bytes per sample
 - **Live mobile app preview during rides**: 
   - Bluetooth LE connection from smartphone to dataloggers
   - Real-time suspension travel display on phone mount
-  - Android/iOS apps for live monitoring
+  - Mobile/Web apps for live monitoring
 - **Mobile-first workflow**:
   - Import data directly from Bluetooth-enabled dataloggers to smartphone
-  - On-bike analysis using tablet (Android/iOS)
+  - On-bike analysis using tablet (Android/Web browser)
   - Cloud sync between desktop and mobile devices
 - **Platform-specific integrations**:
   - Android: Wear OS companion app for at-a-glance metrics
-  - iOS: Apple Watch integration for ride tracking
+  - Web: Progressive Web App (PWA) for cross-device access
   - Integration with popular motorcycle apps (Calimoto, Scenic, etc.)

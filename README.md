@@ -3,7 +3,7 @@
 [![Flutter CI](https://github.com/azizbahri/RideMetricX/actions/workflows/flutter.yml/badge.svg)](https://github.com/azizbahri/RideMetricX/actions/workflows/flutter.yml)
 
 Cross-platform (X) motorcycle suspension tuning simulator built with Flutter,
-targeting Windows, Android, and iOS.
+targeting Windows, Android, and Web.
 
 ## Getting Started
 
@@ -24,7 +24,7 @@ flutter run
 # Run on a specific platform
 flutter run -d windows
 flutter run -d android
-flutter run -d ios
+flutter run -d chrome  # or edge
 ```
 
 ### Test
@@ -43,8 +43,8 @@ flutter analyze
 # Android APK
 flutter build apk
 
-# iOS (requires macOS + Xcode)
-flutter build ios
+# Web
+flutter build web
 
 # Windows
 flutter build windows
@@ -59,7 +59,7 @@ RideMetricX/
 ├── test/
 │   └── widget_test.dart   # Smoke tests
 ├── android/               # Android platform config
-├── ios/                   # iOS platform config
+├── web/                   # Web platform config
 ├── windows/               # Windows platform config
 ├── docs/                  # Architecture & requirements docs
 ├── pubspec.yaml

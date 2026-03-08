@@ -1,7 +1,7 @@
 # Component 3: Suspension Physics Model Requirements (Flutter/Dart)
 
 ## Overview
-The Suspension Physics Model simulates the dynamic behavior of motorcycle suspension systems (front forks and rear shock) based on physical principles. It models spring-damper systems with configurable parameters to predict suspension response to measured forces and accelerations. Implemented in Dart for cross-platform operation on Windows, Android, and iOS.
+The Suspension Physics Model simulates the dynamic behavior of motorcycle suspension systems (front forks and rear shock) based on physical principles. It models spring-damper systems with configurable parameters to predict suspension response to measured forces and accelerations. Implemented in Dart for cross-platform operation on Windows, Android, and Web.
 
 ---
 

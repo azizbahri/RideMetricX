@@ -1,7 +1,7 @@
 # Component 2: Data Import & Processing Requirements (Flutter/Dart)
 
 ## Overview
-The Data Import module reads telemetry files from IMU dataloggers, validates data integrity, synchronizes front/rear sensor streams, and prepares data for physics simulation. Implemented in Dart for cross-platform operation on Windows, Android, and iOS.
+The Data Import module reads telemetry files from IMU dataloggers, validates data integrity, synchronizes front/rear sensor streams, and prepares data for physics simulation. Implemented in Dart for cross-platform operation on Windows, Android, and Web.
 
 ---
 
@@ -202,8 +202,8 @@ The Data Import module reads telemetry files from IMU dataloggers, validates dat
 **Priority**: CRITICAL
 - File picker integration: file_picker package for all platforms
 - Platform-specific storage: path_provider for documents/cache directories
-- Platform permissions: Handle Android/iOS storage permissions
-- Desktop file paths: Support Windows (C:\), Linux (/home), iOS/Android app sandboxing
+- Platform permissions: Handle Android storage permissions and Web File System Access API
+- Desktop file paths: Support Windows (C:\), Linux (/home), Web browser sandboxing
 
 ---
 
@@ -425,7 +425,8 @@ class ValidationRules {
 dependencies:
   file_picker: ^6.0.0        # Cross-platform file selection
   path_provider: ^2.1.0      # Platform-specific directories
-  permission_handler: ^11.0.0 # Android/iOS permissions
+  permission_handler: ^11.0.0 # Android permissions
+  file_picker: ^8.0.0 # Cross-platform file selection including Web
   csv: ^5.0.0                # CSV parsing
   archive: ^3.4.0            # .gz, .zip support
   uuid: ^4.0.0               # Session ID generation

@@ -1,7 +1,7 @@
 # Component 4: Visualization Requirements (Flutter)
 
 ## Overview
-The Visualization module provides real-time 3D rendering of motorcycle suspension dynamics and comprehensive 2D telemetry charting using Flutter widgets and custom painters. It renders suspension geometry, simulates deformation, and displays multi-sensor telemetry data at 60fps on all platforms (Windows, Android, iOS) with support for 1M+ data points.
+The Visualization module provides real-time 3D rendering of motorcycle suspension dynamics and comprehensive 2D telemetry charting using Flutter widgets and custom painters. It renders suspension geometry, simulates deformation, and displays multi-sensor telemetry data at 60fps on all platforms (Windows, Android, Web) with support for 1M+ data points.
 
 ---
 
@@ -601,7 +601,7 @@ Widget buildStrainOverlay(SuspensionState state) {
 ### NFR-VZ-001: Performance
 **Priority**: CRITICAL
 - **Desktop (Windows)**: 60 FPS minimum for 3D rendering and charts
-- **Mobile (Android/iOS)**: 30 FPS minimum, 60 FPS target
+- **Mobile (Android) & Web**: 30 FPS minimum, 60 FPS target
 - **Chart Rendering**: <16ms per frame for 100k points (after downsampling)
 - **Memory Usage**: 
   - Desktop: <500MB for full scene + data buffers
@@ -612,7 +612,7 @@ Widget buildStrainOverlay(SuspensionState state) {
 **Priority**: CRITICAL
 - **Windows**: Windows 10+ (x64)
 - **Android**: API Level 21+ (Android 5.0+)
-- **iOS**: iOS 12+
+- **Web**: Modern browsers (Chrome 90+, Firefox 88+, Safari 14+, Edge 90+)
 - **Screen Resolutions**: 
   - Desktop: 1280x720 minimum, 4K supported
   - Mobile: 360x640 minimum (phone), tablets supported
@@ -833,7 +833,7 @@ private:
    - [ ] Suspension components animate smoothly with travel changes
    - [ ] Framerate maintains 60 FPS on desktop, 30 FPS on mobile
    - [ ] Camera controls respond to touch/mouse gestures smoothly
-   - [ ] Renders correctly on Windows, Android, and iOS
+   - [ ] Renders correctly on Windows, Android, and Web browsers
 
 2. **Data Visualization**:
    - [ ] Charts render time series plots with 100k points (downsampled)
@@ -851,7 +851,7 @@ private:
 4. **Cross-Platform Compatibility**:
    - [ ] Runs on Windows 10+
    - [ ] Runs on Android 5.0+ (API 21+)
-   - [ ] Runs on iOS 12+
+   - [ ] Runs on modern browsers (Chrome 90+, Firefox 88+, Safari 14+, Edge 90+)
    - [ ] Responsive layout adapts to different screen sizes
    - [ ] Performance acceptable on mid-range mobile devices
 

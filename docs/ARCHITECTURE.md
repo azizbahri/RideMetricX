@@ -1,7 +1,7 @@
 # RideMetricX - System Architecture
 
 ## Project Overview
-RideMetricX is a cross-platform motorcycle suspension tuning simulator for the Yamaha Tenere 700 (2025), built with Flutter to run on Windows, Android, and iOS. The system ingests telemetry data from IMU dataloggers mounted on front and rear suspension, simulates suspension behavior under different tuning parameters, and provides visualization for suspension optimization.
+RideMetricX is a cross-platform motorcycle suspension tuning simulator for the Yamaha Tenere 700 (2025), built with Flutter to run on Windows, Android, and Web. The system ingests telemetry data from IMU dataloggers mounted on front and rear suspension, simulates suspension behavior under different tuning parameters, and provides visualization for suspension optimization.
 
 ---
 
@@ -69,7 +69,7 @@ IMU Dataloggers (Hardware)
 ### Framework
 - **Framework**: Flutter 3.x
 - **Language**: Dart 3.x
-- **Target Platforms**: Windows, Android, iOS
+- **Target Platforms**: Windows, Android, Web
 
 ### Core Libraries
 - **State Management**: Provider / Riverpod / Bloc
@@ -135,7 +135,7 @@ RideMetricX/
 │   ├── images/
 │   └── config/
 ├── android/              # Android-specific config
-├── ios/                  # iOS-specific config
+├── web/                  # Web-specific config
 ├── windows/              # Windows-specific config
 ├── pubspec.yaml
 └── README.md
@@ -190,7 +190,7 @@ RideMetricX/
 3. **Physics Model Accuracy**: Balance complexity vs. computational efficiency
 4. **Real-time Simulation**: Fast enough for interactive tuning on mobile devices
 5. **Data Volume**: Handle large ride sessions efficiently on all platforms
-6. **Cross-Platform UI/UX**: Consistent experience across Windows desktop, Android, and iOS
+6. **Cross-Platform UI/UX**: Consistent experience across Windows desktop, Android, and Web browsers
 7. **File System Access**: Platform-specific storage and file access patterns
 8. **Performance Optimization**: Efficient rendering and computation on mobile devices
 
