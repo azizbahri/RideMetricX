@@ -79,7 +79,7 @@ void main() {
 
       final before = ctrl.state.azimuthRad;
       await tester.drag(find.byKey(_childKey), const Offset(50, 0));
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
 
       // A rightward drag should change azimuth (direction depends on sensitivity).
       expect(ctrl.state.azimuthRad, isNot(closeTo(before, 1e-6)));
@@ -92,7 +92,7 @@ void main() {
 
       final before = ctrl.state.elevationRad;
       await tester.drag(find.byKey(_childKey), const Offset(0, 50));
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
 
       expect(ctrl.state.elevationRad, isNot(closeTo(before, 1e-6)));
     });
@@ -109,7 +109,7 @@ void main() {
 
       final azBefore = ctrl.state.azimuthRad;
       await tester.drag(find.byKey(_childKey), const Offset(50, 30));
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
 
       // Pan offset must have changed.
       expect(ctrl.state.panOffset, isNot(Offset.zero));
