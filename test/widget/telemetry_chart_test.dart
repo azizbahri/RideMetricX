@@ -319,7 +319,7 @@ void main() {
       );
 
       await tester.pumpWidget(_wrap(
-        TelemetryChart(series: [seriesA, seriesB]),
+        const TelemetryChart(series: [seriesA, seriesB]),
       ));
       await tester.pump();
 
