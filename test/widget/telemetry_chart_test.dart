@@ -307,12 +307,12 @@ void main() {
     testWidgets('viewport is computed across all series', (tester) async {
       // Series A has y ∈ [0, 1], series B has y ∈ [10, 20].
       // The combined viewport yMin should be less than 0.5 and yMax > 15.
-      final seriesA = const TelemetrySeries(
+      const seriesA = TelemetrySeries(
         label: 'A',
         color: Colors.blue,
         points: [Offset(0, 0), Offset(1, 1)],
       );
-      final seriesB = const TelemetrySeries(
+      const seriesB = TelemetrySeries(
         label: 'B',
         color: Colors.red,
         points: [Offset(0, 10), Offset(1, 20)],
