@@ -51,18 +51,17 @@ ImuSample validSample({
   double gy = 0.0,
   double gz = 0.0,
   double temp = 25.0,
-}) =>
-    ImuSample(
-      timestampMs: t,
-      accelXG: ax,
-      accelYG: ay,
-      accelZG: az,
-      gyroXDps: gx,
-      gyroYDps: gy,
-      gyroZDps: gz,
-      tempC: temp,
-      sampleCount: n,
-    );
+}) => ImuSample(
+  timestampMs: t,
+  accelXG: ax,
+  accelYG: ay,
+  accelZG: az,
+  gyroXDps: gx,
+  gyroYDps: gy,
+  gyroZDps: gz,
+  tempC: temp,
+  sampleCount: n,
+);
 
 // ── TC-DC-001: Sampling-rate accuracy ─────────────────────────────────────────
 
@@ -75,14 +74,19 @@ void main() {
       expect(result.warnings, isEmpty);
     });
 
-    test('raises a warning when observed rate is ≈100 Hz instead of 200 Hz',
-        () {
-      // 100 Hz → 10 ms intervals, but we claim 200 Hz → 5 ms expected.
-      final samples = makeSamples(count: 20, rateHz: 100.0);
-      final result = ImuValidator.validate(samples, expectedRateHz: 200.0);
-      expect(result.warnings, isNotEmpty,
-          reason: 'Rate mismatch should produce a warning');
-    });
+    test(
+      'raises a warning when observed rate is ≈100 Hz instead of 200 Hz',
+      () {
+        // 100 Hz → 10 ms intervals, but we claim 200 Hz → 5 ms expected.
+        final samples = makeSamples(count: 20, rateHz: 100.0);
+        final result = ImuValidator.validate(samples, expectedRateHz: 200.0);
+        expect(
+          result.warnings,
+          isNotEmpty,
+          reason: 'Rate mismatch should produce a warning',
+        );
+      },
+    );
 
     test('no warnings when expectedRateHz is not supplied', () {
       final samples = makeSamples(count: 10, rateHz: 100.0);
@@ -201,10 +205,7 @@ void main() {
       ];
       final result = ImuValidator.validate(samples);
       expect(result.isValid, isFalse);
-      expect(
-        result.errors.any((e) => e.contains('Non-monotonic')),
-        isTrue,
-      );
+      expect(result.errors.any((e) => e.contains('Non-monotonic')), isTrue);
     });
 
     test('fails when two consecutive timestamps are equal', () {
@@ -300,10 +301,7 @@ void main() {
       );
       final result = ImuValidator.validateSync(front, rear);
       expect(result.isValid, isFalse);
-      expect(
-        result.errors.any((e) => e.contains('TC-DC-007')),
-        isTrue,
-      );
+      expect(result.errors.any((e) => e.contains('TC-DC-007')), isTrue);
     });
 
     test('fails when relative sync offset exceeds limit (250 ms)', () {
@@ -320,14 +318,10 @@ void main() {
       );
       final result = ImuValidator.validateSync(front, rear);
       expect(result.isValid, isFalse);
-      expect(
-        result.errors.any((e) => e.contains('TC-DC-007')),
-        isTrue,
-      );
+      expect(result.errors.any((e) => e.contains('TC-DC-007')), isTrue);
     });
 
-    test(
-        'fails when combined offsets exceed limit '
+    test('fails when combined offsets exceed limit '
         '(front=+80ms, rear=−80ms → relative=160ms)', () {
       final front = SessionMetadata(
         sessionId: 'front-005',
@@ -341,10 +335,7 @@ void main() {
       );
       final result = ImuValidator.validateSync(front, rear);
       expect(result.isValid, isFalse);
-      expect(
-        result.errors.any((e) => e.contains('TC-DC-007')),
-        isTrue,
-      );
+      expect(result.errors.any((e) => e.contains('TC-DC-007')), isTrue);
     });
 
     test('fails when positions are swapped', () {
@@ -372,10 +363,7 @@ void main() {
       );
       final result = ImuValidator.validateSync(front, rear);
       expect(result.isValid, isFalse);
-      expect(
-        result.errors.any((e) => e.contains('pairedSessionId')),
-        isTrue,
-      );
+      expect(result.errors.any((e) => e.contains('pairedSessionId')), isTrue);
     });
   });
 
@@ -449,7 +437,15 @@ timestamp_ms,accel_x_g,accel_y_g,accel_z_g,gyro_x_dps,gyro_y_dps,gyro_z_dps,temp
   group('ImuSample', () {
     test('fromCsvRow parses all nine fields correctly', () {
       final row = [
-        '0', '0.02', '-0.01', '1.00', '0.5', '-0.3', '0.1', '25.3', '0',
+        '0',
+        '0.02',
+        '-0.01',
+        '1.00',
+        '0.5',
+        '-0.3',
+        '0.1',
+        '25.3',
+        '0',
       ];
       final s = ImuSample.fromCsvRow(row);
       expect(s.timestampMs, 0);
@@ -469,7 +465,15 @@ timestamp_ms,accel_x_g,accel_y_g,accel_z_g,gyro_x_dps,gyro_y_dps,gyro_z_dps,temp
     test('fromCsvRow throws FormatException when too many columns', () {
       expect(
         () => ImuSample.fromCsvRow([
-          '0', '0.02', '-0.01', '1.00', '0.5', '-0.3', '0.1', '25.3', '0',
+          '0',
+          '0.02',
+          '-0.01',
+          '1.00',
+          '0.5',
+          '-0.3',
+          '0.1',
+          '25.3',
+          '0',
           'extra',
         ]),
         throwsFormatException,

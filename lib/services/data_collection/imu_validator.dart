@@ -139,8 +139,7 @@ class ImuValidator {
     }
 
     // Relative offset between the two sessions.
-    final relativeOffsetMs =
-        (front.syncOffsetMs - rear.syncOffsetMs).abs();
+    final relativeOffsetMs = (front.syncOffsetMs - rear.syncOffsetMs).abs();
     if (relativeOffsetMs > ImuLimits.maxSyncOffsetMs) {
       errors.add(
         'Relative sync offset ${relativeOffsetMs}ms exceeds maximum '
@@ -186,10 +185,7 @@ class ImuValidator {
     }
   }
 
-  static void _checkRanges(
-    List<ImuSample> samples,
-    List<String> errors,
-  ) {
+  static void _checkRanges(List<ImuSample> samples, List<String> errors) {
     for (int i = 0; i < samples.length; i++) {
       final s = samples[i];
 
@@ -233,16 +229,15 @@ class ImuValidator {
     int jitterCount = 0;
 
     for (int i = 1; i < samples.length; i++) {
-      final intervalMs =
-          (samples[i].timestampMs - samples[i - 1].timestampMs).toDouble();
+      final intervalMs = (samples[i].timestampMs - samples[i - 1].timestampMs)
+          .toDouble();
       if ((intervalMs - expectedIntervalMs).abs() > toleranceMs) {
         jitterCount++;
       }
     }
 
     if (jitterCount > 0) {
-      final pct =
-          (jitterCount / (samples.length - 1) * 100).toStringAsFixed(1);
+      final pct = (jitterCount / (samples.length - 1) * 100).toStringAsFixed(1);
       warnings.add(
         '$jitterCount/${samples.length - 1} intervals ($pct%) deviate '
         'by more than ${toleranceMs.toStringAsFixed(1)}ms from '
