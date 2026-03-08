@@ -9,7 +9,6 @@
 //  • targetFps validation: throws ArgumentError for non-positive values
 //  • VisualizationFramePainter.shouldRepaint guard behaviour
 
-import 'package:flutter/animation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -126,7 +125,7 @@ void main() {
     test('returns false when same animation instance is reused', () {
       // Same animation object → repaint listenable already handles repaints;
       // no additional repaint is needed on widget rebuild.
-      final animation = const AlwaysStoppedAnimation<double>(0.5);
+      const animation = AlwaysStoppedAnimation<double>(0.5);
       final p1 = VisualizationFramePainter(animation: animation);
       final p2 = VisualizationFramePainter(animation: animation);
       expect(p1.shouldRepaint(p2), isFalse);
@@ -135,15 +134,15 @@ void main() {
     test('returns true when animation reference changes', () {
       // Different animation objects → the animation source has changed; a full
       // repaint is required.
-      final a1 = const AlwaysStoppedAnimation<double>(0.5);
-      final a2 = const AlwaysStoppedAnimation<double>(0.6);
+      const a1 = AlwaysStoppedAnimation<double>(0.5);
+      const a2 = AlwaysStoppedAnimation<double>(0.6);
       final old = VisualizationFramePainter(animation: a1);
       final next = VisualizationFramePainter(animation: a2);
       expect(next.shouldRepaint(old), isTrue);
     });
 
     test('animationValue getter reflects the animation value', () {
-      final animation = const AlwaysStoppedAnimation<double>(0.75);
+      const animation = AlwaysStoppedAnimation<double>(0.75);
       final painter = VisualizationFramePainter(animation: animation);
       expect(painter.animationValue, 0.75);
     });
