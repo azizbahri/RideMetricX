@@ -11,8 +11,9 @@ typedef FrameCallback = void Function(double value);
 ///   loop (default 60 fps).
 /// - Wraps the render surface in a [RepaintBoundary] to isolate canvas repaints
 ///   from the rest of the widget tree.
-/// - Drives a [VisualizationFramePainter] that short-circuits redundant canvas
-///   redraws through its [VisualizationFramePainter.shouldRepaint] guard.
+/// - Drives a [VisualizationFramePainter] that registers itself as a repaint
+///   listener on the animation controller, triggering canvas repaints directly
+///   on the render object without rebuilding the widget tree.
 ///
 /// Downstream painters for 3D geometry (FR-VZ-002) and telemetry charts
 /// (FR-VZ-003) should extend or compose [VisualizationFramePainter].
@@ -24,7 +25,9 @@ class VisualizationWidget extends StatefulWidget {
   });
 
   /// Target frame rate used to derive the animation-controller cycle duration
-  /// (`1000 / targetFps` milliseconds per cycle).
+  /// (`1_000_000 / targetFps` microseconds per cycle).
+  ///
+  /// Must be a positive integer; throws [ArgumentError] otherwise.
   final int targetFps;
 
   /// Optional callback invoked once per animation tick.  Useful for tests and
@@ -43,6 +46,7 @@ class VisualizationWidget extends StatefulWidget {
 class _VisualizationWidgetState extends State<VisualizationWidget>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
+  late VisualizationFramePainter _painter;
 
   @override
   void initState() {
@@ -53,6 +57,7 @@ class _VisualizationWidgetState extends State<VisualizationWidget>
     )
       ..addListener(_onTick)
       ..repeat();
+    _painter = VisualizationFramePainter(animation: _animationController);
   }
 
   @override
@@ -72,8 +77,21 @@ class _VisualizationWidgetState extends State<VisualizationWidget>
     super.dispose();
   }
 
-  Duration _cycleDuration() =>
-      Duration(milliseconds: (1000 / widget.targetFps).round());
+  /// Returns the per-cycle [Duration] for [widget.targetFps].
+  ///
+  /// Throws [ArgumentError] when [VisualizationWidget.targetFps] is not a
+  /// positive integer, preventing a division-by-zero or [Duration.zero] being
+  /// passed to [AnimationController].
+  Duration _cycleDuration() {
+    if (widget.targetFps <= 0) {
+      throw ArgumentError.value(
+        widget.targetFps,
+        'targetFps',
+        'must be a positive integer',
+      );
+    }
+    return Duration(microseconds: (1e6 / widget.targetFps).round());
+  }
 
   void _onTick() {
     widget.onFrame?.call(_animationController.value);
@@ -84,15 +102,10 @@ class _VisualizationWidgetState extends State<VisualizationWidget>
   @override
   Widget build(BuildContext context) {
     return RepaintBoundary(
-      child: AnimatedBuilder(
-        animation: _animationController,
-        builder: (context, _) => CustomPaint(
-          key: VisualizationWidget.canvasKey,
-          painter: VisualizationFramePainter(
-            animationValue: _animationController.value,
-          ),
-          child: const SizedBox.expand(),
-        ),
+      child: CustomPaint(
+        key: VisualizationWidget.canvasKey,
+        painter: _painter,
+        child: const SizedBox.expand(),
       ),
     );
   }
@@ -102,15 +115,29 @@ class _VisualizationWidgetState extends State<VisualizationWidget>
 
 /// [CustomPainter] for the visualization render surface (FR-VZ-001).
 ///
-/// The [shouldRepaint] guard returns `true` only when [animationValue] has
-/// changed, preventing redundant canvas redraws on frames where nothing has
-/// moved.  Downstream painters should extend this class and override [paint]
-/// and [shouldRepaint] accordingly.
+/// Registers [animation] as its repaint listenable so that the render object
+/// repaints on every animation tick without rebuilding the widget tree.
+/// [animationValue] reads the current tick value directly from [animation]
+/// on every [paint] call.
+///
+/// [shouldRepaint] returns `true` only when the underlying [animation]
+/// reference changes (e.g. the controller is replaced), preventing full
+/// repaint on widget rebuilds that do not alter the animation source.
+/// Animation-driven repaints bypass [shouldRepaint] and go directly to
+/// [paint] via `markNeedsPaint`.
+///
+/// Downstream painters should extend this class and override [paint] and
+/// [shouldRepaint] accordingly.
 class VisualizationFramePainter extends CustomPainter {
-  const VisualizationFramePainter({required this.animationValue});
+  VisualizationFramePainter({required Animation<double> animation})
+      : _animation = animation,
+        super(repaint: animation);
 
-  /// Current animation tick value in the range 0.0–1.0.
-  final double animationValue;
+  final Animation<double> _animation;
+
+  /// Current animation tick value in the range 0.0–1.0, read fresh on every
+  /// [paint] call via the underlying [Animation].
+  double get animationValue => _animation.value;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -120,5 +147,5 @@ class VisualizationFramePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant VisualizationFramePainter oldDelegate) =>
-      animationValue != oldDelegate.animationValue;
+      _animation != oldDelegate._animation;
 }

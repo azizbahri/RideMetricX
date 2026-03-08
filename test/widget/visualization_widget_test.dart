@@ -2,11 +2,14 @@
 //
 // Covers:
 //  • Widget lifecycle: initState creates animation controller, dispose cleans up
-//  • RepaintBoundary is present in the widget tree
+//  • RepaintBoundary is a direct ancestor of the canvas (not a false match from
+//    MaterialApp/Scaffold boundaries)
 //  • Animation frame loop: onFrame callback fires on animation tick
 //  • Baseline frame-loop smoke test across multiple pump cycles
+//  • targetFps validation: throws ArgumentError for non-positive values
 //  • VisualizationFramePainter.shouldRepaint guard behaviour
 
+import 'package:flutter/animation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -32,9 +35,16 @@ void main() {
       expect(find.byKey(VisualizationWidget.canvasKey), findsOneWidget);
     });
 
-    testWidgets('RepaintBoundary wraps the canvas', (tester) async {
+    testWidgets('RepaintBoundary is a direct ancestor of the canvas',
+        (tester) async {
       await tester.pumpWidget(_wrap(const VisualizationWidget()));
-      expect(find.byType(RepaintBoundary), findsWidgets);
+      final canvasFinder = find.byKey(VisualizationWidget.canvasKey);
+      expect(canvasFinder, findsOneWidget);
+      final boundaryFinder = find.ancestor(
+        of: canvasFinder,
+        matching: find.byType(RepaintBoundary),
+      );
+      expect(boundaryFinder, findsOneWidget);
     });
 
     testWidgets('disposes without error when removed from tree', (tester) async {
@@ -56,6 +66,22 @@ void main() {
       // Rebuild with a different targetFps to exercise didUpdateWidget.
       await tester.pumpWidget(_wrap(const VisualizationWidget(targetFps: 30)));
       expect(find.byType(VisualizationWidget), findsOneWidget);
+    });
+
+    testWidgets('throws ArgumentError when targetFps is zero', (tester) async {
+      await expectLater(
+        () => tester.pumpWidget(_wrap(const VisualizationWidget(targetFps: 0))),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    testWidgets('throws ArgumentError when targetFps is negative',
+        (tester) async {
+      await expectLater(
+        () =>
+            tester.pumpWidget(_wrap(const VisualizationWidget(targetFps: -1))),
+        throwsA(isA<ArgumentError>()),
+      );
     });
   });
 
@@ -97,34 +123,29 @@ void main() {
 
   // ── shouldRepaint guard ────────────────────────────────────────────────────
   group('VisualizationFramePainter shouldRepaint', () {
-    test('returns false when animationValue is unchanged', () {
-      const p1 = VisualizationFramePainter(animationValue: 0.5);
-      const p2 = VisualizationFramePainter(animationValue: 0.5);
+    test('returns false when same animation instance is reused', () {
+      // Same animation object → repaint listenable already handles repaints;
+      // no additional repaint is needed on widget rebuild.
+      final animation = const AlwaysStoppedAnimation<double>(0.5);
+      final p1 = VisualizationFramePainter(animation: animation);
+      final p2 = VisualizationFramePainter(animation: animation);
       expect(p1.shouldRepaint(p2), isFalse);
     });
 
-    test('returns true when animationValue increases', () {
-      const old = VisualizationFramePainter(animationValue: 0.5);
-      const next = VisualizationFramePainter(animationValue: 0.6);
+    test('returns true when animation reference changes', () {
+      // Different animation objects → the animation source has changed; a full
+      // repaint is required.
+      final a1 = const AlwaysStoppedAnimation<double>(0.5);
+      final a2 = const AlwaysStoppedAnimation<double>(0.6);
+      final old = VisualizationFramePainter(animation: a1);
+      final next = VisualizationFramePainter(animation: a2);
       expect(next.shouldRepaint(old), isTrue);
     });
 
-    test('returns true when animationValue decreases (cycle wrap)', () {
-      const old = VisualizationFramePainter(animationValue: 0.9);
-      const next = VisualizationFramePainter(animationValue: 0.1);
-      expect(next.shouldRepaint(old), isTrue);
-    });
-
-    test('returns true for initial frame (0.0 to non-zero)', () {
-      const old = VisualizationFramePainter(animationValue: 0.0);
-      const next = VisualizationFramePainter(animationValue: 0.1);
-      expect(next.shouldRepaint(old), isTrue);
-    });
-
-    test('returns false when both values are 0.0', () {
-      const p1 = VisualizationFramePainter(animationValue: 0.0);
-      const p2 = VisualizationFramePainter(animationValue: 0.0);
-      expect(p1.shouldRepaint(p2), isFalse);
+    test('animationValue getter reflects the animation value', () {
+      final animation = const AlwaysStoppedAnimation<double>(0.75);
+      final painter = VisualizationFramePainter(animation: animation);
+      expect(painter.animationValue, 0.75);
     });
   });
 }
