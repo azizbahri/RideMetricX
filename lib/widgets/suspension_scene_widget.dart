@@ -141,6 +141,7 @@ class _SuspensionSceneWidgetState extends State<SuspensionSceneWidget>
     return SuspensionModelPainter(
       animation: _animationController,
       state: widget.state,
+      sceneGraph: _sceneGraph,
       forkMaterial: widget.forkMaterial,
       shockMaterial: widget.shockMaterial,
       frameMaterial: widget.frameMaterial,

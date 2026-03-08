@@ -5,9 +5,10 @@ import 'package:flutter/material.dart';
 /// Encapsulates the base colour, simulated PBR hints ([metallic], [roughness]),
 /// and a strain-colour integration hook via [getStrainColor].
 ///
-/// The [getStrainColor] method lerps from [Colors.green] (relaxed) to
-/// [Colors.red] (fully compressed) when [strainColor] is set, providing
-/// per-component compression visualisation without requiring a shader pipeline.
+/// The [getStrainColor] method lerps from [baseColor] (relaxed) to [strainColor!]
+/// (fully compressed) when [strainColor] is set, providing per-component
+/// compression visualisation without requiring a shader pipeline.  For the
+/// built-in [strainSensor] preset this gives a green → red gradient.
 @immutable
 class SuspensionMaterial {
   const SuspensionMaterial({
@@ -29,9 +30,9 @@ class SuspensionMaterial {
   /// Simulated roughness in [0, 1]; drives gradient spread in shading.
   final double roughness;
 
-  /// Optional override that activates strain-colour mode.  When non-null,
-  /// [getStrainColor] lerps from [Colors.green] → [Colors.red] instead of
-  /// returning [baseColor].
+  /// Optional end-colour for strain visualisation.  When non-null,
+  /// [getStrainColor] lerps from [baseColor] (relaxed) to [strainColor!]
+  /// (fully compressed) instead of returning [baseColor] unchanged.
   final Color? strainColor;
 
   // ── Predefined materials ───────────────────────────────────────────────────
@@ -63,13 +64,14 @@ class SuspensionMaterial {
   /// Returns the rendered colour for the given [compressionPercent] ∈ [0, 1].
   ///
   /// When [strainColor] is null the [baseColor] is returned unchanged.
-  /// Otherwise the colour lerps from [Colors.green] (0 % compression) to
-  /// [Colors.red] (100 % compression).
+  /// Otherwise the colour lerps from [baseColor] (0 % compression) to
+  /// [strainColor!] (100 % compression), giving a fully customisable
+  /// strain-visualisation range.
   Color getStrainColor(double compressionPercent) {
     if (strainColor == null) return baseColor;
     return Color.lerp(
-      Colors.green,
-      Colors.red,
+      baseColor,
+      strainColor!,
       compressionPercent.clamp(0.0, 1.0),
     )!;
   }

@@ -36,12 +36,24 @@ class SuspensionState {
   // ── Derived properties ─────────────────────────────────────────────────────
 
   /// Front compression ratio in [0, 1] (0 = extended, 1 = fully compressed).
-  double get frontCompressionRatio =>
-      (frontTravelMm / frontMaxTravelMm).clamp(0.0, 1.0);
+  double get frontCompressionRatio {
+    if (frontMaxTravelMm <= 0.0) {
+      // Avoid division by zero or negative normalisation; treat as no compression.
+      return 0.0;
+    }
+    final double ratio = frontTravelMm / frontMaxTravelMm;
+    return ratio.clamp(0.0, 1.0);
+  }
 
   /// Rear compression ratio in [0, 1] (0 = extended, 1 = fully compressed).
-  double get rearCompressionRatio =>
-      (rearTravelMm / rearMaxTravelMm).clamp(0.0, 1.0);
+  double get rearCompressionRatio {
+    if (rearMaxTravelMm <= 0.0) {
+      // Avoid division by zero or negative normalisation; treat as no compression.
+      return 0.0;
+    }
+    final double ratio = rearTravelMm / rearMaxTravelMm;
+    return ratio.clamp(0.0, 1.0);
+  }
 
   // ── Copy ───────────────────────────────────────────────────────────────────
 

@@ -75,6 +75,30 @@ void main() {
       );
       expect(state.frontCompressionRatio, 1.0);
     });
+
+    test('front ratio is 0 when frontMaxTravelMm is zero', () {
+      const state = SuspensionState(
+        frontTravelMm: 100.0,
+        frontMaxTravelMm: 0.0,
+      );
+      expect(state.frontCompressionRatio, 0.0);
+    });
+
+    test('rear ratio is 0 when rearMaxTravelMm is zero', () {
+      const state = SuspensionState(
+        rearTravelMm: 50.0,
+        rearMaxTravelMm: 0.0,
+      );
+      expect(state.rearCompressionRatio, 0.0);
+    });
+
+    test('front ratio is 0 when frontMaxTravelMm is negative', () {
+      const state = SuspensionState(
+        frontTravelMm: 10.0,
+        frontMaxTravelMm: -100.0,
+      );
+      expect(state.frontCompressionRatio, 0.0);
+    });
   });
 
   // ── copyWith ──────────────────────────────────────────────────────────────

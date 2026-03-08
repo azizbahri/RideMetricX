@@ -50,14 +50,14 @@ void main() {
   group('SuspensionMaterial.getStrainColor with strainColor', () {
     const mat = SuspensionMaterial.strainSensor;
 
-    test('returns green at 0 % compression', () {
+    test('returns baseColor at 0 % compression', () {
       // Color.lerp returns a plain Color; compare via .value to avoid
       // MaterialColor vs Color type mismatch.
-      expect(mat.getStrainColor(0.0).value, equals(Colors.green.value));
+      expect(mat.getStrainColor(0.0).value, equals(mat.baseColor.value));
     });
 
-    test('returns red at 100 % compression', () {
-      expect(mat.getStrainColor(1.0).value, equals(Colors.red.value));
+    test('returns strainColor at 100 % compression', () {
+      expect(mat.getStrainColor(1.0).value, equals(mat.strainColor!.value));
     });
 
     test('returns a colour between green and red at 50 %', () {
@@ -67,12 +67,25 @@ void main() {
       expect(mid.green, greaterThan(0));
     });
 
-    test('clamps value below 0 to green', () {
-      expect(mat.getStrainColor(-0.5).value, equals(Colors.green.value));
+    test('clamps value below 0 to baseColor', () {
+      expect(mat.getStrainColor(-0.5).value, equals(mat.baseColor.value));
     });
 
-    test('clamps value above 1 to red', () {
-      expect(mat.getStrainColor(2.0).value, equals(Colors.red.value));
+    test('clamps value above 1 to strainColor', () {
+      expect(mat.getStrainColor(2.0).value, equals(mat.strainColor!.value));
+    });
+
+    test('lerps between custom baseColor and strainColor', () {
+      const custom = SuspensionMaterial(
+        baseColor: Colors.blue,
+        strainColor: Colors.orange,
+      );
+      expect(custom.getStrainColor(0.0).value, equals(Colors.blue.value));
+      expect(custom.getStrainColor(1.0).value, equals(Colors.orange.value));
+      // Mid-point should differ from both endpoints
+      final mid = custom.getStrainColor(0.5);
+      expect(mid.value, isNot(equals(Colors.blue.value)));
+      expect(mid.value, isNot(equals(Colors.orange.value)));
     });
   });
 

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../models/suspension_material.dart';
 import '../models/suspension_state.dart';
+import 'scene_node.dart';
 import '../widgets/visualization_widget.dart';
 
 /// Canvas-based pseudo-3D painter for the motorcycle suspension model
@@ -15,6 +16,10 @@ import '../widgets/visualization_widget.dart';
 /// with the current compression ratio from [state], giving a real-time
 /// green → red strain indication (FR-VZ-003).
 ///
+/// Compression ratios and wheel rotation are derived from [sceneGraph] world
+/// transforms so that rendering and the transform hierarchy stay consistent.
+/// [state] is still consulted for the max-travel bounds used in normalisation.
+///
 /// Geometry is expressed in a normalised 0–1 coordinate space and mapped to
 /// canvas pixels via [_toScreen] at paint time so the view auto-scales to any
 /// widget size.
@@ -22,14 +27,20 @@ class SuspensionModelPainter extends VisualizationFramePainter {
   SuspensionModelPainter({
     required super.animation,
     required this.state,
+    required this.sceneGraph,
     this.forkMaterial = SuspensionMaterial.aluminum,
     this.shockMaterial = SuspensionMaterial.aluminum,
     this.frameMaterial = SuspensionMaterial.carbon,
     this.strainMaterial = SuspensionMaterial.strainSensor,
   });
 
-  /// Current suspension animation state driving geometry and colour.
+  /// Current suspension animation state (used for max-travel normalisation).
   final SuspensionState state;
+
+  /// Scene graph whose world transforms drive painter geometry.  Must be
+  /// kept in sync with [state] by calling [SuspensionSceneGraph.updateState]
+  /// before constructing a new painter.
+  final SuspensionSceneGraph sceneGraph;
 
   /// Material for the front-fork tubes.
   final SuspensionMaterial forkMaterial;
@@ -42,6 +53,37 @@ class SuspensionModelPainter extends VisualizationFramePainter {
 
   /// Material used for strain-colour overlays on animated elements.
   final SuspensionMaterial strainMaterial;
+
+  // ── Scene-graph-derived geometry helpers ─────────────────────────────────
+
+  /// Front compression ratio in [0, 1] derived from the scene graph's
+  /// frontFork world transform Y-translation divided by [state.frontMaxTravelMm].
+  double get _frontCompressionRatio {
+    if (state.frontMaxTravelMm <= 0.0) return 0.0;
+    final forkWorld = sceneGraph.worldTransformOf(sceneGraph.frontFork);
+    if (forkWorld == null) return 0.0;
+    return (forkWorld.getTranslation().y / state.frontMaxTravelMm)
+        .clamp(0.0, 1.0);
+  }
+
+  /// Rear compression ratio in [0, 1] derived from the scene graph's
+  /// rearShock world transform Y-translation divided by [state.rearMaxTravelMm].
+  double get _rearCompressionRatio {
+    if (state.rearMaxTravelMm <= 0.0) return 0.0;
+    final shockWorld = sceneGraph.worldTransformOf(sceneGraph.rearShock);
+    if (shockWorld == null) return 0.0;
+    return (shockWorld.getTranslation().y / state.rearMaxTravelMm)
+        .clamp(0.0, 1.0);
+  }
+
+  /// Wheel rotation angle (radians) derived from the frontWheel world
+  /// transform rotation sub-matrix.
+  double get _wheelRotationRad {
+    final wheelWorld = sceneGraph.worldTransformOf(sceneGraph.frontWheel);
+    if (wheelWorld == null) return 0.0;
+    // Column-major Matrix4: m[0]=cos(θ), m[1]=sin(θ) for a Z-rotation.
+    return math.atan2(wheelWorld[1], wheelWorld[0]);
+  }
 
   // ── Layout constants (normalised 0–1 space) ──────────────────────────────
 
@@ -83,7 +125,7 @@ class SuspensionModelPainter extends VisualizationFramePainter {
   // ── Front fork (FR-VZ-002) ────────────────────────────────────────────────
 
   void _drawFrontFork(Canvas canvas, Size size) {
-    final ratio = state.frontCompressionRatio;
+    final ratio = _frontCompressionRatio;
 
     // Strain-colour integration (FR-VZ-003)
     final tubeColor = strainMaterial.getStrainColor(ratio);
@@ -126,7 +168,7 @@ class SuspensionModelPainter extends VisualizationFramePainter {
   // ── Rear shock (FR-VZ-002) ────────────────────────────────────────────────
 
   void _drawRearShock(Canvas canvas, Size size) {
-    final ratio = state.rearCompressionRatio;
+    final ratio = _rearCompressionRatio;
 
     // Strain-colour integration (FR-VZ-003)
     final shockColor = strainMaterial.getStrainColor(ratio);
@@ -169,15 +211,15 @@ class SuspensionModelPainter extends VisualizationFramePainter {
 
   void _drawWheels(Canvas canvas, Size size) {
     final radius = _kWheelRadius * size.shortestSide;
-    final frontRatio = state.frontCompressionRatio;
-    final rearRatio = state.rearCompressionRatio;
+    final frontRatio = _frontCompressionRatio;
+    final rearRatio = _rearCompressionRatio;
 
     // Front wheel axle rises with compression
     _drawWheel(
       canvas,
       _toScreen(size, 0.33, 0.75 - frontRatio * 0.15),
       radius,
-      state.wheelRotationRad,
+      _wheelRotationRad,
     );
 
     // Rear wheel axle rises with compression
@@ -185,7 +227,7 @@ class SuspensionModelPainter extends VisualizationFramePainter {
       canvas,
       _toScreen(size, 0.72, 0.75 - rearRatio * 0.10),
       radius,
-      state.wheelRotationRad,
+      _wheelRotationRad,
     );
   }
 
@@ -246,6 +288,7 @@ class SuspensionModelPainter extends VisualizationFramePainter {
   bool shouldRepaint(covariant SuspensionModelPainter oldDelegate) {
     return super.shouldRepaint(oldDelegate) ||
         state != oldDelegate.state ||
+        !identical(sceneGraph, oldDelegate.sceneGraph) ||
         forkMaterial != oldDelegate.forkMaterial ||
         shockMaterial != oldDelegate.shockMaterial ||
         frameMaterial != oldDelegate.frameMaterial ||
