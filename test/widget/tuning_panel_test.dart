@@ -255,13 +255,15 @@ void main() {
       );
 
       // Start the simulation.
-      // Two pumps are required: the first processes the tap and schedules the
-      // zero-duration debounce timer; the second fires that timer so _execute()
-      // runs and the state transitions to 'running'.
+      // pump() with no argument only flushes microtasks — it does NOT advance
+      // the fake clock, so Timer(Duration.zero, …) never fires.
+      // pump(Duration.zero) calls _fakeAsync.elapse(Duration.zero), which
+      // fires elapsed zero-duration timers and then renders the dirty frame.
       await tester.tap(find.byKey(TuningScreen.runButtonKey));
       await tester
-          .pump(); // process tap → schedules Timer(Duration.zero, _execute)
-      await tester.pump(); // fire the timer → state becomes 'running' → rebuild
+          .pump(); // process tap → onPressed → trigger() → Timer(0, _execute)
+      await tester.pump(
+          Duration.zero); // elapse 0 → timer fires → running state → rebuild
 
       // The button should now say "Running…" and be disabled.
       expect(find.text('Running…'), findsOneWidget);
