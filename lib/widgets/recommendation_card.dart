@@ -105,8 +105,9 @@ class _RecommendationCardState extends State<RecommendationCard> {
               alignment: Alignment.centerRight,
               child: FilledButton.icon(
                 key: RecommendationCard.applyKey(rec.id),
-                onPressed: () =>
-                    widget.onApply?.call(rec.suggestedParameters!),
+                onPressed: widget.onApply != null
+                    ? () => widget.onApply!(rec.suggestedParameters!)
+                    : null,
                 icon: const Icon(Icons.tune, size: 16),
                 label: const Text('Apply Suggestion'),
               ),

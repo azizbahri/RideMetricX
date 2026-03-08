@@ -27,9 +27,18 @@ class RecommendationEngine {
     _checkTooMuchRebound(metrics, current, results);
     _checkFrontRearImbalance(metrics, current, results);
 
-    // Descending severity: high first.
+    // Descending severity: high first, then by type and id for stability.
     results.sort(
-      (a, b) => b.severity.priorityScore.compareTo(a.severity.priorityScore),
+      (a, b) {
+        final severityCmp =
+            b.severity.priorityScore.compareTo(a.severity.priorityScore);
+        if (severityCmp != 0) return severityCmp;
+
+        final typeCmp = a.type.index.compareTo(b.type.index);
+        if (typeCmp != 0) return typeCmp;
+
+        return a.id.compareTo(b.id);
+      },
     );
 
     return List.unmodifiable(results);
@@ -92,8 +101,19 @@ class RecommendationEngine {
         math.min(m.frontTravelUsagePercent, m.rearTravelUsagePercent);
     if (minUsage >= 70.0) return;
 
-    final underusedEnd =
-        m.frontTravelUsagePercent < m.rearTravelUsagePercent ? 'front' : 'rear';
+    final bool frontBelow = m.frontTravelUsagePercent < 70.0;
+    final bool rearBelow = m.rearTravelUsagePercent < 70.0;
+
+    String underusedEnd;
+    if (m.frontTravelUsagePercent == m.rearTravelUsagePercent &&
+        frontBelow &&
+        rearBelow) {
+      underusedEnd = 'front & rear';
+    } else if (m.frontTravelUsagePercent < m.rearTravelUsagePercent) {
+      underusedEnd = 'front';
+    } else {
+      underusedEnd = 'rear';
+    }
     final usagePct = minUsage.toStringAsFixed(0);
 
     // Suggest -2 compression clicks on both ends to free up travel.
@@ -230,7 +250,7 @@ class RecommendationEngine {
             '${m.rearTravelUsagePercent.toStringAsFixed(0)}%)',
         rationale:
             'The $heavierEnd suspension is using significantly more travel '
-            'than the $lighterEnd ($diff% difference). Reducing compression '
+            'than the $lighterEnd (${diff.toStringAsFixed(1)}% difference). Reducing compression '
             'damping on the $lighterEnd by ~2 clicks will allow it to '
             'utilise more travel and balance the handling.',
         suggestedParameters: suggested,

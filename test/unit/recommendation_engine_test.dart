@@ -172,6 +172,17 @@ void main() {
           .firstWhere((r) => r.type == RecommendationType.notUsingFullTravel);
       expect(rec.severity, RecommendationSeverity.medium);
     });
+
+    test('labels both ends when usage is equal', () {
+      const metrics = AnalysisMetrics(
+        frontTravelUsagePercent: 60.0,
+        rearTravelUsagePercent: 60.0,
+      );
+      final recs = _engine.generate(metrics, _current);
+      final rec = recs
+          .firstWhere((r) => r.type == RecommendationType.notUsingFullTravel);
+      expect(rec.title, contains('front & rear'));
+    });
   });
 
   // ── Harsh ride ──────────────────────────────────────────────────────────────
