@@ -254,13 +254,13 @@ void main() {
 
   group('TC-DC-007: Front/rear time synchronisation (<100 ms)', () {
     test('passes when relative sync offset is within limit (50 ms)', () {
-      final front = const SessionMetadata(
+      const front = SessionMetadata(
         sessionId: 'front-001',
         position: SensorPosition.front,
         syncOffsetMs: 50,
         pairedSessionId: 'rear-001',
       );
-      final rear = const SessionMetadata(
+      const rear = SessionMetadata(
         sessionId: 'rear-001',
         position: SensorPosition.rear,
         syncOffsetMs: 0,
@@ -271,13 +271,13 @@ void main() {
     });
 
     test('passes when relative sync offset is exactly 99 ms', () {
-      final front = const SessionMetadata(
+      const front = SessionMetadata(
         sessionId: 'front-002',
         position: SensorPosition.front,
         syncOffsetMs: 99,
         pairedSessionId: 'rear-002',
       );
-      final rear = const SessionMetadata(
+      const rear = SessionMetadata(
         sessionId: 'rear-002',
         position: SensorPosition.rear,
         syncOffsetMs: 0,
@@ -288,13 +288,13 @@ void main() {
     });
 
     test('fails when relative sync offset is exactly 100 ms', () {
-      final front = const SessionMetadata(
+      const front = SessionMetadata(
         sessionId: 'front-003',
         position: SensorPosition.front,
         syncOffsetMs: 100,
         pairedSessionId: 'rear-003',
       );
-      final rear = const SessionMetadata(
+      const rear = SessionMetadata(
         sessionId: 'rear-003',
         position: SensorPosition.rear,
         syncOffsetMs: 0,
@@ -306,13 +306,13 @@ void main() {
     });
 
     test('fails when relative sync offset exceeds limit (250 ms)', () {
-      final front = const SessionMetadata(
+      const front = SessionMetadata(
         sessionId: 'front-004',
         position: SensorPosition.front,
         syncOffsetMs: 250,
         pairedSessionId: 'rear-004',
       );
-      final rear = const SessionMetadata(
+      const rear = SessionMetadata(
         sessionId: 'rear-004',
         position: SensorPosition.rear,
         pairedSessionId: 'front-004',
@@ -325,12 +325,12 @@ void main() {
     test(
         'fails when combined offsets exceed limit '
         '(front=+80ms, rear=−80ms → relative=160ms)', () {
-      final front = const SessionMetadata(
+      const front = SessionMetadata(
         sessionId: 'front-005',
         position: SensorPosition.front,
         syncOffsetMs: 80,
       );
-      final rear = const SessionMetadata(
+      const rear = SessionMetadata(
         sessionId: 'rear-005',
         position: SensorPosition.rear,
         syncOffsetMs: -80,
@@ -341,11 +341,11 @@ void main() {
     });
 
     test('fails when positions are swapped', () {
-      final a = const SessionMetadata(
+      const a = SessionMetadata(
         sessionId: 'a',
         position: SensorPosition.rear, // wrong
       );
-      final b = const SessionMetadata(
+      const b = SessionMetadata(
         sessionId: 'b',
         position: SensorPosition.front, // wrong
       );
@@ -354,12 +354,12 @@ void main() {
     });
 
     test('fails when pairedSessionId does not match peer sessionId', () {
-      final front = const SessionMetadata(
+      const front = SessionMetadata(
         sessionId: 'front-006',
         position: SensorPosition.front,
         pairedSessionId: 'rear-999', // wrong
       );
-      final rear = const SessionMetadata(
+      const rear = SessionMetadata(
         sessionId: 'rear-006',
         position: SensorPosition.rear,
       );
@@ -501,7 +501,7 @@ timestamp_ms,accel_x_g,accel_y_g,accel_z_g,gyro_x_dps,gyro_y_dps,gyro_z_dps,temp
 
   group('SessionMetadata', () {
     test('hasPair is true when pairedSessionId is set', () {
-      final meta = const SessionMetadata(
+      const meta = SessionMetadata(
         sessionId: 'front-001',
         position: SensorPosition.front,
         pairedSessionId: 'rear-001',
@@ -510,7 +510,7 @@ timestamp_ms,accel_x_g,accel_y_g,accel_z_g,gyro_x_dps,gyro_y_dps,gyro_z_dps,temp
     });
 
     test('hasPair is false without pairedSessionId', () {
-      final meta = const SessionMetadata(
+      const meta = SessionMetadata(
         sessionId: 'front-001',
         position: SensorPosition.front,
       );
@@ -518,7 +518,7 @@ timestamp_ms,accel_x_g,accel_y_g,accel_z_g,gyro_x_dps,gyro_y_dps,gyro_z_dps,temp
     });
 
     test('default samplingRateHz is 200 Hz', () {
-      final meta = const SessionMetadata(
+      const meta = SessionMetadata(
         sessionId: 's1',
         position: SensorPosition.rear,
       );
@@ -526,7 +526,7 @@ timestamp_ms,accel_x_g,accel_y_g,accel_z_g,gyro_x_dps,gyro_y_dps,gyro_z_dps,temp
     });
 
     test('default syncOffsetMs is 0', () {
-      final meta = const SessionMetadata(
+      const meta = SessionMetadata(
         sessionId: 's1',
         position: SensorPosition.front,
       );
