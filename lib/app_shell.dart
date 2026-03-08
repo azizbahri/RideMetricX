@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 
@@ -98,11 +100,16 @@ class _AppShellState extends State<AppShell> {
       return null;
     }
 
-    return FileSelection(
-      fileName: file.name,
-      filePath: file.path!,
-      fileSizeBytes: file.size,
-    );
+    try {
+      final content = await File(file.path!).readAsString();
+      return FileSelection(fileName: file.name, content: content);
+    } on FileSystemException {
+      return null;
+    } on FormatException {
+      // File could not be decoded as text (e.g. raw binary); return null so
+      // the import pipeline can report an appropriate error to the user.
+      return null;
+    }
   }
 
   void _onDestinationSelected(int index) {
