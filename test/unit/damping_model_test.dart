@@ -260,13 +260,15 @@ void main() {
     });
 
     test('force is continuous at the threshold (no jump)', () {
+      // Use a tiny delta (1e-9 m/s = 1e-6 mm/s) so the slope difference between
+      // the two regimes (~14 N·s/mm) contributes only ~1.4e-5 N over the span.
       final justBelow = DampingModel.calculateForce(
         biLinearConfig,
-        velocityMps: threshold - 0.0001,
+        velocityMps: threshold - 1e-9,
       );
       final justAbove = DampingModel.calculateForce(
         biLinearConfig,
-        velocityMps: threshold + 0.0001,
+        velocityMps: threshold + 1e-9,
       );
       expect((justAbove.forceN - justBelow.forceN).abs(), lessThan(1.0));
     });
@@ -283,11 +285,11 @@ void main() {
     test('bi-linear rebound: force is negative and continuous at −threshold', () {
       final justBelow = DampingModel.calculateForce(
         biLinearConfig,
-        velocityMps: -(threshold - 0.0001),
+        velocityMps: -(threshold - 1e-9),
       );
       final justAbove = DampingModel.calculateForce(
         biLinearConfig,
-        velocityMps: -(threshold + 0.0001),
+        velocityMps: -(threshold + 1e-9),
       );
       expect(justBelow.forceN, lessThan(0));
       expect(justAbove.forceN, lessThan(0));
