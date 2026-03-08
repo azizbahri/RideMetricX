@@ -443,8 +443,8 @@ timestamp_ms,value
 
   group('Decompressor – gzip', () {
     test('decompresses gzip-encoded UTF-8 content', () {
-      final original = 'timestamp_ms,value\n0,1.0\n5,2.0\n';
-      final compressed = GZipEncoder().encode(utf8.encode(original));
+      const original = 'timestamp_ms,value\n0,1.0\n5,2.0\n';
+      final compressed = const GZipEncoder().encode(utf8.encode(original));
       final result = Decompressor.decompress(compressed, CompressionFormat.gzip);
       expect(result, original);
     });
@@ -459,7 +459,7 @@ timestamp_ms,value
 
   group('Decompressor – zip', () {
     test('decompresses a single-file ZIP archive', () {
-      final original = 'timestamp_ms,value\n0,1.0\n5,2.0\n';
+      const original = 'timestamp_ms,value\n0,1.0\n5,2.0\n';
       final archive = Archive()
         ..addFile(ArchiveFile('data.csv', original.length, utf8.encode(original)));
       final zipBytes = ZipEncoder().encode(archive);
@@ -468,8 +468,8 @@ timestamp_ms,value
     });
 
     test('returns first non-directory entry from multi-file ZIP', () {
-      final first = 'first file content';
-      final second = 'second file content';
+      const first = 'first file content';
+      const second = 'second file content';
       final archive = Archive()
         ..addFile(ArchiveFile('a.csv', first.length, utf8.encode(first)))
         ..addFile(ArchiveFile('b.csv', second.length, utf8.encode(second)));

@@ -60,7 +60,7 @@ class Decompressor {
 
   static String _decompressGzip(List<int> bytes) {
     try {
-      final decoded = GZipDecoder().decodeBytes(bytes);
+      final decoded = const GZipDecoder().decodeBytes(bytes);
       return utf8.decode(decoded);
     } catch (e) {
       throw FileFormatException(
