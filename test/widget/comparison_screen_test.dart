@@ -278,6 +278,43 @@ void main() {
 
       expect(find.text('-15.0'), findsOneWidget);
     });
+
+    testWidgets('zero delta shows 0.0 without + or - prefix', (tester) async {
+      final identical = const TuningParameters(
+        front: SuspensionParameters(
+          springRate: 30.0,
+          compression: 12.0,
+          rebound: 8.0,
+          preload: 4.0,
+        ),
+        rear: SuspensionParameters(
+          springRate: 30.0,
+          compression: 12.0,
+          rebound: 8.0,
+          preload: 4.0,
+        ),
+      );
+
+      final baseline = _makeSnapshot(
+        id: 'base-zero',
+        label: 'BaseZero',
+        parameters: identical,
+      );
+      final comparison = _makeSnapshot(
+        id: 'comp-zero',
+        label: 'CompZero',
+        parameters: identical,
+      );
+
+      final repo = SnapshotRepository()..add(baseline)..add(comparison);
+      await tester.pumpWidget(_wrap(ComparisonScreen(repository: repo)));
+      await tester.pump();
+
+      // Zero delta should be rendered without a + or - prefix.
+      expect(find.text('0.0'), findsWidgets);
+      expect(find.text('+0.0'), findsNothing);
+      expect(find.text('-0.0'), findsNothing);
+    });
   });
 
   // ── Clear snapshots ───────────────────────────────────────────────────────────

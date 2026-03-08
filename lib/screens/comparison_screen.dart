@@ -16,8 +16,8 @@ final _sharedRepository = SnapshotRepository();
 /// Displays a scrollable table that places each captured [TuningSnapshot] in
 /// its own column.  The first snapshot (oldest) is treated as the baseline;
 /// all subsequent snapshots show delta values (Δ) relative to the baseline,
-/// colour-coded green (lower value) / red (higher value) or neutral (no
-/// change).
+/// colour-coded using the theme's tertiary (lower value) and error (higher
+/// value) containers, or neutral (no change).
 ///
 /// An optional [repository] may be supplied for testing; when omitted the
 /// app-wide [_sharedRepository] is used.
@@ -70,10 +70,11 @@ class ComparisonScreen extends StatelessWidget {
     final repo = _repo;
     final count = repo.length + 1;
     final preset = _demoPresetForCount(count);
+    final now = DateTime.now();
     final snapshot = TuningSnapshot(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      id: now.microsecondsSinceEpoch.toString(),
       label: 'Snapshot $count',
-      createdAt: DateTime.now().toUtc(),
+      createdAt: now.toUtc(),
       parameters: preset,
     );
     repo.add(snapshot);
@@ -504,7 +505,7 @@ class _MetricDef {
 
 // ── Demo preset cycling ───────────────────────────────────────────────────────
 
-/// Returns a demo [TuningParameters] preset cycling through soft → default →
+/// Returns a demo [TuningParameters] preset cycling through default → soft →
 /// firm to produce interesting delta values when the user captures multiple
 /// snapshots without a real session loaded.
 TuningParameters _demoPresetForCount(int count) => switch (count % 3) {
